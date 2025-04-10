@@ -39,7 +39,6 @@ export default {
   task: {
     maxConcurrentTasks: 1,
     taskTimeout: 30 * 60 * 1000,
-    retryCount: 2,
     taskTypes: {
       // 渲染任务配置
       render: {

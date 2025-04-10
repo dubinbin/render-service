@@ -34,7 +34,6 @@ export class ScriptExecutorService {
   taskConfig: {
     maxConcurrentTasks: number;
     taskTimeout: number;
-    retryCount: number;
     taskTypes: Record<string, any>;
   };
 

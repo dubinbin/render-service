@@ -33,7 +33,6 @@ export class TaskSchedulerService {
   taskConfig: {
     maxConcurrentTasks: number; // 最大并发任务数
     taskTimeout: number; // 任务超时时间(毫秒)
-    retryCount: number; // 重试次数
     taskTypes: Record<
       string,
       {
@@ -54,13 +53,10 @@ export class TaskSchedulerService {
 
   @Init()
   async init() {
-    // 启动时，恢复之前处理中但未完成的任务
     await this.recoverProcessingTasks();
 
-    // 启动任务处理循环
     this.startTaskProcessing();
 
-    // 设置RabbitMQ消费者
     await this.setupRabbitMQConsumer();
 
     this.logger.info('任务调度器已初始化');
@@ -100,10 +96,8 @@ export class TaskSchedulerService {
     // 使用Sorted Set，以优先级作为分数，确保按优先级顺序处理任务
     await this.redisService.zadd(this.TASK_QUEUE_KEY, priority, task.id);
 
-    // 将任务持久化到数据库
     await this.taskPersistence.saveTask(task);
 
-    // 通过RabbitMQ发送任务
     await this.rabbitmqService.sendMessage(this.RABBITMQ_QUEUE, {
       taskId: task.id,
       action: 'create',
