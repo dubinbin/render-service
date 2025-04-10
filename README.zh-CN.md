@@ -1,4 +1,4 @@
-# my_midway_project
+git branch -M main# my_midway_project
 
 ## 快速入门
 

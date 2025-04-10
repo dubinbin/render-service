@@ -11,3 +11,5 @@ run/
 *.un~
 .tsbuildinfo
 .tsbuildinfo.*
+.env
+render_output/

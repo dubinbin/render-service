@@ -7,9 +7,11 @@ import * as crossDomain from '@midwayjs/cross-domain';
 import * as jwt from '@midwayjs/jwt';
 import * as passport from '@midwayjs/passport';
 import * as busboy from '@midwayjs/busboy';
+import * as redis from '@midwayjs/redis';
 import { ReportMiddleware } from './middleware/report.middleware';
 import { DefaultFilter } from './filter/default.filter';
 import { ResponseMiddleware } from './middleware/response.middleware';
+import * as rabbitmq from '@midwayjs/rabbitmq';
 
 @Configuration({
   imports: [
@@ -23,6 +25,8 @@ import { ResponseMiddleware } from './middleware/response.middleware';
     passport,
     busboy,
     crossDomain,
+    rabbitmq,
+    redis,
   ],
   importConfigs: [join(__dirname, './config')],
 })

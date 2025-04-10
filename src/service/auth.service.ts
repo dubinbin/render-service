@@ -10,7 +10,7 @@ export class AdminService {
   jwt: JwtService;
 
   async login(email: string, password: string) {
-    const user = await PrismaService.adminUser.findFirst({
+    const user = await PrismaService.user.findFirst({
       where: {
         email: email,
       },
@@ -56,7 +56,7 @@ export class AdminService {
 
     const hashedPassword = await PasswordService.hashPassword(password);
 
-    return await PrismaService.adminUser.create({
+    return await PrismaService.user.create({
       data: {
         email: email,
         nickname: nickname,

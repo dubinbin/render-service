@@ -13,13 +13,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model AdminUser {
+model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   uid       String   @unique
   nickname  String   @unique
+  openId    String?
   password  String // 存储加密后的密码
   role      Int      @default(1)
   enable    Boolean  @default(true)
   createdAt DateTime @default(now())
+}
+
+model Task {
+  id          String  @id
+  type        String
+  data        Json?
+  status      String // "pending", "processing", "completed", "failed"
+  createdAt   BigInt
+  updatedAt   BigInt?
+  startedAt   BigInt?
+  completedAt BigInt?
+  error       String? @db.Text
+  progress    Int     @default(0)
+  priority    Int     @default(10)
+
+  @@index([type])
+  @@index([status])
 }
