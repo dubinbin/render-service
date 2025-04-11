@@ -134,63 +134,17 @@ export class TaskSchedulerService {
     taskId: string,
     status: TaskStatus,
     additionalInfo?: Partial<TaskMessage>
-  ): Promise<TaskMessage | null> {
-    const taskKey = `${this.TASK_INFO_PREFIX}${taskId}`;
-    const taskJson = await this.redisService.get(taskKey);
+  ): Promise<void> {
+    const timestamp = Date.now(); // 使用当前时间作为时间戳
 
-    if (!taskJson) {
-      return null;
-    }
-
-    const task: TaskMessage = JSON.parse(taskJson);
-    const previousStatus = task.status;
-    const updatedTask: TaskMessage = {
-      ...task,
+    // 发送包含时间戳的消息
+    await this.rabbitmqService.sendMessage(this.RABBITMQ_QUEUE, {
+      taskId,
+      action: 'statusUpdate',
       status,
-      updatedAt: Date.now(),
-      ...additionalInfo,
-    };
-
-    // 如果任务开始执行
-    if (status === TaskStatus.PROCESSING && !task.startedAt) {
-      updatedTask.startedAt = Date.now();
-    }
-
-    // 如果任务完成或失败
-    if (
-      (status === TaskStatus.COMPLETED || status === TaskStatus.FAILED) &&
-      !updatedTask.completedAt
-    ) {
-      updatedTask.completedAt = Date.now();
-
-      // 从处理中集合移除
-      await this.redisService.srem(this.TASK_PROCESSING_KEY, taskId);
-
-      // 更新当前运行任务数
-      this.currentRunningTasks = Math.max(0, this.currentRunningTasks - 1);
-
-      // 任务完成后，尝试处理下一个任务
-      this.processNextTasks();
-    }
-
-    // 更新任务信息
-    await this.redisService.set(taskKey, JSON.stringify(updatedTask));
-
-    this.logger.info(`更新任务状态[${taskId}]: ${task.status} -> ${status}`);
-
-    // 如果状态发生了变化，则持久化到数据库并通过RabbitMQ通知
-    if (previousStatus !== status) {
-      await this.taskPersistence.saveTask(updatedTask);
-
-      // 通过RabbitMQ发送状态更新通知
-      await this.rabbitmqService.sendMessage(this.RABBITMQ_QUEUE, {
-        taskId: updatedTask.id,
-        action: 'statusUpdate',
-        status: updatedTask.status,
-      });
-    }
-
-    return updatedTask;
+      additionalInfo,
+      timestamp, // 添加时间戳
+    });
   }
 
   /**
@@ -480,50 +434,86 @@ export class TaskSchedulerService {
    * 设置RabbitMQ消费者
    */
   private async setupRabbitMQConsumer(): Promise<void> {
-    try {
-      // 消费RabbitMQ消息
-      await this.rabbitmqService.consumeMessage(
-        this.RABBITMQ_QUEUE,
-        async message => {
-          try {
-            const content = JSON.parse(message.content.toString());
-            const { taskId, action } = content;
+    await this.rabbitmqService.consumeMessage(
+      this.RABBITMQ_QUEUE,
+      async message => {
+        try {
+          const content = JSON.parse(message.content.toString());
+          const { taskId, action, status, additionalInfo, timestamp } = content;
 
-            this.logger.info(`收到RabbitMQ消息: ${action}, 任务ID: ${taskId}`);
+          this.logger.info(
+            `收到RabbitMQ消息: ${action}, 任务ID: ${taskId}, 时间戳: ${timestamp}`
+          );
 
-            // 根据消息类型处理
-            switch (action) {
-              case 'create':
-                // 尝试处理队列中的任务
-                this.processNextTasks();
-                break;
+          // 获取当前任务状态
+          const taskKey = `${this.TASK_INFO_PREFIX}${taskId}`;
+          const taskJson = await this.redisService.get(taskKey);
 
-              case 'statusUpdate':
-                // 状态已在发送前更新，这里无需额外处理
-                break;
-
-              case 'start':
-                // 任务开始前已更新状态，这里无需额外处理
-                break;
-
-              case 'complete':
-              case 'error':
-                // 任务结束时已更新状态，这里无需额外处理
-                break;
-
-              case 'cancel':
-                // 取消任务时已更新状态，这里无需额外处理
-                break;
-            }
-          } catch (error) {
-            this.logger.error('处理RabbitMQ消息时出错', error);
+          if (!taskJson) {
+            this.logger.warn(`找不到任务: ${taskId}, 忽略消息`);
+            return;
           }
-        }
-      );
 
-      this.logger.info('RabbitMQ消费者已设置');
-    } catch (error) {
-      this.logger.error('设置RabbitMQ消费者时出错', error);
-    }
+          const task: TaskMessage = JSON.parse(taskJson);
+
+          // 幂等性检查：只处理更新的消息
+          if (task.updatedAt && timestamp <= task.updatedAt) {
+            this.logger.info(
+              `收到过时消息，当前时间戳: ${task.updatedAt}, 消息时间戳: ${timestamp}, 忽略`
+            );
+            return;
+          }
+
+          // 处理状态更新
+          switch (action) {
+            case 'statusUpdate': {
+              // 更新任务状态
+              const updatedTask: TaskMessage = {
+                ...task,
+                status,
+                updatedAt: timestamp, // 使用消息时间戳作为更新时间
+                ...additionalInfo,
+              };
+
+              // 特殊状态处理（如处理中、完成、失败等）
+              if (status === TaskStatus.PROCESSING && !updatedTask.startedAt) {
+                updatedTask.startedAt = timestamp;
+              } else if (
+                (status === TaskStatus.COMPLETED ||
+                  status === TaskStatus.FAILED) &&
+                !updatedTask.completedAt
+              ) {
+                updatedTask.completedAt = timestamp;
+
+                // 从处理中集合移除
+                await this.redisService.srem(this.TASK_PROCESSING_KEY, taskId);
+
+                // 更新当前运行任务数
+                this.currentRunningTasks = Math.max(
+                  0,
+                  this.currentRunningTasks - 1
+                );
+
+                // 处理下一个任务
+                this.processNextTasks();
+              }
+
+              // 更新Redis
+              await this.redisService.set(taskKey, JSON.stringify(updatedTask));
+
+              // 更新数据库
+              await this.taskPersistence.saveTask(updatedTask);
+
+              this.logger.info(
+                `任务状态已更新 [${taskId}]: ${task.status} -> ${status}`
+              );
+              break;
+            }
+          }
+        } catch (error) {
+          this.logger.error('处理RabbitMQ消息时出错', error);
+        }
+      }
+    );
   }
 }
