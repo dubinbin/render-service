@@ -13,3 +13,9 @@ export enum TASK_STATUS_FROM_MQTT {
   'remove' = 'remove',
   'working' = 'working',
 }
+
+export type IRenderDataType = {
+  resolution: string;
+  quality: string;
+  frames: number;
+};

@@ -104,7 +104,10 @@ export class ScriptExecutorService {
 
       return new Promise((resolve, reject) => {
         // 执行Python脚本
-        const pythonProcess = spawn('python3', [scriptPath, ...args]);
+        const pythonProcess = spawn(
+          '/Applications/Blender.app/Contents/MacOS/Blender',
+          ['--background', '--python', scriptPath, ...args]
+        );
         let lastProgress = 0;
         let totalOutput = '';
         let errorOutput = '';

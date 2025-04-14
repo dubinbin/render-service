@@ -13,6 +13,7 @@ import { TaskSchedulerService } from '../service/taskSchedulerService';
 import { TaskPersistenceService } from '../service/taskPersistenceService';
 import { ScriptExecutorService } from '../service/scriptExecutorService';
 import { TaskStatus } from '../constant/taskStatus';
+import { IRenderDataType } from '@/constant';
 
 @Provide()
 @Controller('/api/render')
@@ -36,24 +37,16 @@ export class RenderController {
   async createRenderTask(
     @Body()
     body: {
-      scene: string;
-      settings: {
-        resolution: string;
-        quality: string;
-        frames: number;
-      };
-      priority?: number;
+      projectId: string;
+      settings: IRenderDataType;
     }
   ) {
     try {
       // 创建渲染任务
-      const task = await this.renderTaskService.createRenderTask(
-        {
-          scene: body.scene,
-          settings: body.settings,
-        },
-        body.priority // 如果未提供优先级，则使用默认值
-      );
+      const task = await this.renderTaskService.createRenderTask({
+        projectId: body.projectId,
+        settings: body.settings,
+      });
 
       return {
         success: true,
@@ -110,23 +103,23 @@ export class RenderController {
   /**
    * 获取所有渲染任务列表，支持分页和筛选
    */
-  @Get('/tasks')
+  @Get('/tasks_list')
   async listRenderTasks(
     @Query('page') page = 1,
-    @Query('pageSize') pageSize = 20,
+    @Query('pageSize') pageSize = 10,
     @Query('status') status?: string,
     @Query('type') type = 'render'
   ) {
     try {
       // 将页码转换为skip值
-      const skip = (page - 1) * pageSize;
+      const skip = (Number(page) - 1) * Number(pageSize);
 
       // 通过持久化服务查询任务列表
       const result = await this.taskPersistence.listTasks({
         type,
         status: status as TaskStatus,
         skip,
-        take: pageSize,
+        take: Number(pageSize),
       });
 
       return {
@@ -143,9 +136,6 @@ export class RenderController {
             priority: task.priority,
           })),
           total: result.total,
-          page,
-          pageSize,
-          totalPages: Math.ceil(result.total / pageSize),
         },
       };
     } catch (error) {

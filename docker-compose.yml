@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Redis 服务（端口 6379）
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    environment:
+      - REDIS_PASSWORD=6653145  # 可选：设置Redis密码
+
+  # MySQL 服务（端口 3306）
+  mysql:
+    image: mysql:8.0.37
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - mysql_config:/etc/mysql/conf.d
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 6653145  # <-- 移除 '-'，改为 key: value
+      MYSQL_ROOT_HOST: '%'          # <-- 移除 '-'，改为 key: value
+
+
+  # RabbitMQ 服务（AMQP 5672，管理界面 15672）
+  rabbitmq:
+    image: bitnami/rabbitmq:latest
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"    # AMQP 协议端口
+      - "15672:15672"  # 管理界面端口
+    volumes:
+      - rabbitmq_data:/bitnami/rabbitmq
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_USERNAME=admin
+      - RABBITMQ_PASSWORD=6653145
+      - RABBITMQ_LOOPBACK_USERS=false
+      - RABBITMQ_MANAGEMENT_ALLOW_WEB_ACCESS=true
+
+# 定义持久化存储卷
+volumes:
+  redis_data:
+    driver: local
+  mysql_data:
+    driver: local
+  mysql_config:
+    driver: local
+  rabbitmq_data:
+    driver: local

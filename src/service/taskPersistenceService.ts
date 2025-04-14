@@ -15,13 +15,22 @@ export class TaskPersistenceService {
    */
   async saveTask(task: TaskMessage): Promise<void> {
     try {
+      const updatedAt = task.updatedAt
+        ? new Date(task.updatedAt).toISOString()
+        : null;
+      const startedAt = task.startedAt
+        ? new Date(task.startedAt).toISOString()
+        : null;
+      const completedAt = task.completedAt
+        ? new Date(task.completedAt).toISOString()
+        : null;
       await PrismaService.task.upsert({
         where: { id: task.id },
         update: {
           status: task.status,
-          updatedAt: task.updatedAt,
-          startedAt: task.startedAt,
-          completedAt: task.completedAt,
+          updatedAt: updatedAt,
+          startedAt: startedAt,
+          completedAt: completedAt,
           error: task.error,
           progress: task.progress || 0,
         },
@@ -30,13 +39,14 @@ export class TaskPersistenceService {
           type: task.type,
           data: task.data,
           status: task.status,
-          createdAt: task.createdAt,
-          updatedAt: task.updatedAt,
-          startedAt: task.startedAt,
-          completedAt: task.completedAt,
+          createdAt: new Date(task.createdAt),
+          updatedAt: updatedAt,
+          startedAt: startedAt,
+          completedAt: completedAt,
           error: task.error,
           progress: task.progress || 0,
           priority: task.priority || 10,
+          projectId: task.projectId,
         },
       });
 
@@ -76,6 +86,7 @@ export class TaskPersistenceService {
         error: task.error || undefined,
         progress: task.progress,
         priority: task.priority,
+        projectId: task.projectId,
       };
     } catch (error) {
       this.logger.error(`获取任务[${taskId}]信息失败`, error);
@@ -97,7 +108,7 @@ export class TaskPersistenceService {
     total: number;
   }> {
     try {
-      const { type, status, skip = 0, take = 20 } = options;
+      const { type, status, skip = 0, take = 10 } = options;
 
       // 构建查询条件
       const where: any = {};
@@ -109,8 +120,12 @@ export class TaskPersistenceService {
       }
 
       // 查询总数
-      const total = await PrismaService.task.count({ where });
-
+      const total = await PrismaService.task.count({
+        where: {
+          ...where,
+          status: {},
+        },
+      });
       // 查询任务列表
       const tasks = await PrismaService.task.findMany({
         where,
@@ -134,6 +149,7 @@ export class TaskPersistenceService {
           error: task.error || undefined,
           progress: task.progress,
           priority: task.priority,
+          projectId: task.projectId,
         })),
       };
     } catch (error) {

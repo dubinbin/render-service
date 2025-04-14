@@ -8,6 +8,7 @@ import { RabbitMQService } from './rabbitmq';
 import { TaskPersistenceService } from './taskPersistenceService';
 import { v4 as uuidv4 } from 'uuid';
 import { RenderTaskService } from './renderTaskService';
+import { IRenderDataType } from '@/constant';
 
 @Provide()
 export class TaskSchedulerService {
@@ -67,7 +68,10 @@ export class TaskSchedulerService {
    */
   async createTask(
     type: string,
-    data: any,
+    data: {
+      projectId: string;
+      settings: IRenderDataType;
+    },
     priority = 10
   ): Promise<TaskMessage> {
     // 验证任务类型是否支持
@@ -80,6 +84,7 @@ export class TaskSchedulerService {
       id: uuidv4(),
       type,
       data,
+      projectId: data.projectId,
       status: TaskStatus.PENDING,
       createdAt: Date.now(),
       updatedAt: Date.now(),

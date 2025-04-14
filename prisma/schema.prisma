@@ -25,19 +25,32 @@ model User {
   createdAt DateTime @default(now())
 }
 
+model Project {
+  id        Int      @id @default(autoincrement())
+  name      String?
+  createdAt DateTime @default(now())
+  projectId String   @unique
+  Task      Task[]
+  model     String
+  assignee  String?
+  // 后期关联user表
+}
+
 model Task {
-  id          String  @id
+  id          String    @id
   type        String
   data        Json?
   status      String // "pending", "processing", "completed", "failed"
-  createdAt   BigInt
-  updatedAt   BigInt?
-  startedAt   BigInt?
-  completedAt BigInt?
-  error       String? @db.Text
-  progress    Int     @default(0)
-  priority    Int     @default(10)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+  error       String?   @db.Text
+  progress    Int       @default(0)
+  priority    Int       @default(10)
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [projectId])
 
-  @@index([type])
   @@index([status])
+  @@index([projectId])
 }

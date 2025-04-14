@@ -31,7 +31,10 @@ export class GeneratePythonScriptService {
    * @param params 渲染参数
    * @returns 执行结果
    */
-  async StartCreateAndExecuteScript(taskId: string, params: any): Promise<any> {
+  async StartCreateAndExecuteScript(
+    taskId: string,
+    params: Record<string, any>
+  ): Promise<any> {
     try {
       // 生成脚本
       const scriptPath = await this.createBlenderScript(taskId, params);
@@ -55,64 +58,101 @@ export class GeneratePythonScriptService {
   /**
    * 创建Python渲染脚本
    * @param taskId 任务ID
-   * @param params 渲染参数
+   * @param _params 渲染参数
    * @returns 脚本路径
    */
-  async createBlenderScript(taskId: string, params: any): Promise<string> {
+  async createBlenderScript(
+    taskId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _params: Record<string, any>
+  ): Promise<string> {
     try {
       // 1. Python脚本模板
       const pythonTemplate = `
-import time
-import sys
-import random
+import bpy
 import os
+import math
 
-print("脚本开始执行")
-print("任务ID: ${taskId}")
+taskId = "${taskId}"
 
-# 模拟一些工作
-for i in range(5):
-    print(f"正在处理: {i+1}/5")
-    time.sleep(1)  # 每次暂停1秒
+# 直接使用相对路径（假设Blender从项目根目录启动）
+blend_file_path = "/Users/ryderdu/Desktop/mock_data/test.blend"
+
+# 检查文件是否存在
+if not os.path.exists(blend_file_path):
+    # 如果不存在，输出错误信息
+    print(f"错误: 未能找到blend文件: {blend_file_path}")
+    print(f"当前工作目录: {os.getcwd()}")
+    raise FileNotFoundError(f"未能找到blend文件: {blend_file_path}")
+
+print(f"正在加载blend文件: {blend_file_path}")
+bpy.ops.wm.open_mainfile(filepath=blend_file_path)
+
+# 获取场景中现有的相机，如果没有则创建新相机
+if len(bpy.data.cameras) > 0:
+    # 使用现有的相机
+    camera_object = None
+    for obj in bpy.data.objects:
+        if obj.type == 'CAMERA':
+            camera_object = obj
+            break
     
-    # 随机模拟错误，30%概率失败
-    if random.random() < 0.3:  # 30%的概率抛出异常
-        print(f"处理步骤 {i+1} 时遇到随机错误")
-        error_type = random.choice(["ValueError", "IOError", "RuntimeError", "MemoryError"])
-        print(f"错误类型: {error_type}")
-        
-        # 为了更清晰地表明这是模拟错误，我们写入一个错误状态文件
-        try:
-            print(f"错误详情已写入")
-        except Exception as e:
-            print(f"写入错误文件时遇到问题: {e}")
-        
-        # 根据错误类型执行不同的失败行为
-        if error_type == "ValueError":
-            print("参数错误，无法继续执行")
-            sys.exit(1)  # 错误退出，状态码1
-        elif error_type == "IOError":
-            print("IO错误，文件操作失败")
-            sys.exit(2)  # 错误退出，状态码2
-        elif error_type == "RuntimeError":
-            print("运行时错误，任务中断")
-            sys.exit(3)  # 错误退出，状态码3
-        else:
-            print("严重错误，程序崩溃")
-            os._exit(1)  # 强制终止进程
-    
-    print(f"步骤 {i+1} 完成")
+    # 如果没有找到相机，创建一个新的
+    if camera_object is None:
+        new_camera = bpy.data.cameras.new(name='Camera')
+        camera_object = bpy.data.objects.new('CameraObject', new_camera)
+        bpy.context.scene.collection.objects.link(camera_object)
+else:
+    # 创建一个新的相机
+    new_camera = bpy.data.cameras.new(name='Camera')
+    camera_object = bpy.data.objects.new('CameraObject', new_camera)
+    bpy.context.scene.collection.objects.link(camera_object)
 
-# 如果有参数，打印出来
-if len(sys.argv) > 1:
-    print(f"收到参数: {sys.argv[1:]}")
+# 设置相机位置和旋转
+camera_object.location = (9, -4, 2.5)  # 设置相机的位置坐标
+camera_object.rotation_euler = (math.radians(82), 0, math.radians(60))  # 设置相机的旋转角度
+camera_object.data.lens = 10
 
-# 最后一步，有10%的概率在最后一刻失败
-if random.random() < 0.1:  # 10%的概率在最后失败
-    print("任务即将完成，但在最后阶段失败")
-    sys.exit(99)
+# 确保相机是活动的并设置为场景相机
+bpy.context.view_layer.objects.active = camera_object
+bpy.context.scene.camera = camera_object  # 设置为场景相机
 
-print("脚本执行完成")
+# 设置渲染引擎为Cycles
+bpy.context.scene.render.engine = 'CYCLES'
+
+scene = bpy.context.scene
+cycles = scene.cycles
+
+cycles.device = 'GPU'
+cycles.samples = 32
+cycles.use_adaptive_sampling = True
+cycles.adaptive_threshold = 0.1
+cycles.adaptive_min_samples = 32
+cycles.tile_size = 32
+
+# 设置渲染输出路径
+output_dir = "./render_output/${taskId}/"
+
+
+# 确保输出目录存在
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+# 使用 os.path.join 正确拼接路径，确保跨平台兼容性
+output_file = os.path.join(output_dir, f"{taskId}.png")
+
+
+bpy.context.scene.render.filepath = output_file
+
+# 设置渲染分辨率
+bpy.context.scene.render.resolution_x = 640
+bpy.context.scene.render.resolution_y = 480
+bpy.context.scene.render.resolution_percentage = 50
+
+# 执行渲染并保存图像
+bpy.ops.render.render(write_still=True)
+
+print("渲染完成，图像已保存到:", output_file)
 `;
 
       // 2. 确保脚本目录存在
