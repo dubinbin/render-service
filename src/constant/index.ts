@@ -19,3 +19,9 @@ export type IRenderDataType = {
   quality: string;
   frames: number;
 };
+
+export enum LOG_STAGE {
+  'start' = 'start',
+  'processing' = 'processing',
+  'completed' = 'completed',
+}

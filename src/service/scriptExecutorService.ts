@@ -9,6 +9,9 @@ import * as path from 'path';
 import * as moment from 'moment';
 import { promisify } from 'util';
 import * as readline from 'readline';
+import { LogService } from './log.service';
+import { LOG_STAGE } from '@/constant';
+import { ArchiveService } from './archive.service';
 
 const mkdirAsync = promisify(fs.mkdir);
 // Replace deprecated fs.exists with fs.access
@@ -24,6 +27,12 @@ export class ScriptExecutorService {
 
   @Inject()
   taskPersistence: TaskPersistenceService;
+
+  @Inject()
+  logService: LogService;
+
+  @Inject()
+  archiveService: ArchiveService;
 
   @Config('render')
   renderConfig: {
@@ -77,6 +86,15 @@ export class ScriptExecutorService {
 
       // 记录开始执行日志
       this.logger.info(`开始执行脚本: ${scriptPath}, 任务ID: ${taskId}`);
+
+      this.logService.addLog(
+        taskId,
+        LOG_STAGE.processing,
+        `[${moment().format(
+          'YYYY-MM-DD HH:mm:ss'
+        )}] 开始执行脚本: ${scriptPath}, 任务ID: ${taskId}`
+      );
+
       this.writeLog(
         logStream,
         `[${moment().format(
@@ -92,10 +110,24 @@ export class ScriptExecutorService {
         `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 参数: ${args.join(' ')}`
       );
 
+      this.logService.addLog(
+        taskId,
+        LOG_STAGE.processing,
+        `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 执行参数: ${args.join(
+          ' '
+        )}`
+      );
+
       // 更新任务状态为执行中
       await this.taskScheduler.updateTaskStatus(taskId, TaskStatus.PROCESSING);
       this.writeLog(
         logStream,
+        `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 任务状态已更新为: 执行中`
+      );
+
+      this.logService.addLog(
+        taskId,
+        LOG_STAGE.processing,
         `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 任务状态已更新为: 执行中`
       );
 
@@ -129,6 +161,14 @@ export class ScriptExecutorService {
             )}] [stdout] ${output.trim()}`
           );
 
+          this.logService.addLog(
+            taskId,
+            LOG_STAGE.processing,
+            `[${moment().format(
+              'YYYY-MM-DD HH:mm:ss'
+            )}] python script stdout: ${output.trim()}`
+          );
+
           // 尝试从输出中提取进度信息
           const progressMatch = output.match(progressRegex);
           if (progressMatch && progressMatch.length >= 3) {
@@ -149,6 +189,14 @@ export class ScriptExecutorService {
                         'YYYY-MM-DD HH:mm:ss'
                       )}] [错误] 更新任务进度失败: ${err.message}`
                     );
+
+                    this.logService.addLog(
+                      taskId,
+                      LOG_STAGE.processing,
+                      `[${moment().format(
+                        'YYYY-MM-DD HH:mm:ss'
+                      )}] 更新任务进度失败: ${err.message}`
+                    );
                   });
               }
             }
@@ -167,6 +215,12 @@ export class ScriptExecutorService {
             )}] [stderr] ${output.trim()}`
           );
 
+          this.logService.addLog(
+            taskId,
+            LOG_STAGE.processing,
+            `python script stderr: ${output.trim()}`
+          );
+
           // 尝试提取错误类型
           const errorMatch = output.match(errorRegex);
           if (errorMatch && errorMatch.length >= 2) {
@@ -175,6 +229,12 @@ export class ScriptExecutorService {
               `[${moment().format(
                 'YYYY-MM-DD HH:mm:ss'
               )}] [错误] 检测到错误类型: ${errorMatch[1]}`
+            );
+
+            this.logService.addLog(
+              taskId,
+              LOG_STAGE.processing,
+              `python script stderr: ${errorMatch[1]}`
             );
           }
         });
@@ -187,6 +247,12 @@ export class ScriptExecutorService {
             `[${moment().format(
               'YYYY-MM-DD HH:mm:ss'
             )}] 脚本执行完成，退出码: ${code}`
+          );
+
+          this.logService.addLog(
+            taskId,
+            LOG_STAGE.processing,
+            `脚本执行完成，退出码: ${code}`
           );
           this.writeLog(
             logStream,
@@ -201,6 +267,14 @@ export class ScriptExecutorService {
               this.writeLog(
                 logStream,
                 `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 任务执行成功`
+              );
+
+              await this.logService.addLog(
+                taskId,
+                LOG_STAGE.completed,
+                `[${moment().format(
+                  'YYYY-MM-DD HH:mm:ss'
+                )}] python script completed`
               );
 
               // 更新任务状态为已完成
@@ -218,6 +292,8 @@ export class ScriptExecutorService {
                 }
               );
 
+              this.completeTaskAction(taskId);
+
               resolve({
                 success: true,
                 outputPath: logFilePath,
@@ -231,6 +307,16 @@ export class ScriptExecutorService {
                   'YYYY-MM-DD HH:mm:ss'
                 )}] 任务执行失败，退出码: ${code}`
               );
+
+              await this.logService.addLog(
+                taskId,
+                LOG_STAGE.completed,
+                `[${moment().format(
+                  'YYYY-MM-DD HH:mm:ss'
+                )}] python script failed, exit code: ${code}`
+              );
+
+              this.completeTaskAction(taskId);
               // 提取错误信息
               const errorMessage =
                 errorOutput || `脚本执行失败，退出码: ${code}`;
@@ -264,6 +350,14 @@ export class ScriptExecutorService {
                 'YYYY-MM-DD HH:mm:ss'
               )}] [错误] 更新任务状态失败: ${err.message}`
             );
+
+            this.logService.addLog(
+              taskId,
+              LOG_STAGE.completed,
+              `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 更新任务状态失败: ${
+                err.message
+              }`
+            );
             this.logger.error(`更新任务状态失败: ${err.message}`);
             reject(err);
           } finally {
@@ -280,8 +374,14 @@ export class ScriptExecutorService {
               'YYYY-MM-DD HH:mm:ss'
             )}] [错误] 启动脚本时出错: ${err.message}`
           );
-          this.logger.error(`启动脚本时出错: ${err.message}`);
 
+          this.logService.addLog(
+            taskId,
+            LOG_STAGE.processing,
+            `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 启动脚本时出错: ${
+              err.message
+            }`
+          );
           try {
             // 更新任务状态为失败
             await this.taskScheduler.updateTaskStatus(
@@ -293,6 +393,13 @@ export class ScriptExecutorService {
             );
           } catch (updateErr) {
             this.logger.error(`更新任务状态失败: ${updateErr.message}`);
+            this.logService.addLog(
+              taskId,
+              LOG_STAGE.processing,
+              `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 更新任务状态失败: ${
+                updateErr.message
+              }`
+            );
           } finally {
             // 关闭日志流
             logStream.end();
@@ -311,8 +418,14 @@ export class ScriptExecutorService {
               timeout / 1000
             }秒)`
           );
-          this.logger.error(`脚本执行超时: ${taskId}`);
 
+          this.logService.addLog(
+            taskId,
+            LOG_STAGE.processing,
+            `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 脚本执行超时 (${
+              timeout / 1000
+            }秒)`
+          );
           // 终止进程
           pythonProcess.kill();
 
@@ -345,7 +458,15 @@ export class ScriptExecutorService {
         logStream,
         `[${moment().format('YYYY-MM-DD HH:mm:ss')}] [错误] ${error.message}`
       );
+
+      await this.logService.addLog(
+        taskId,
+        LOG_STAGE.completed,
+        `[${moment().format('YYYY-MM-DD HH:mm:ss')}] [错误] ${error.message}`
+      );
       this.logger.error(`执行脚本时出错: ${error.message}`);
+
+      this.completeTaskAction(taskId);
 
       // 更新任务状态为失败
       await this.taskScheduler.updateTaskStatus(taskId, TaskStatus.FAILED, {
@@ -360,6 +481,17 @@ export class ScriptExecutorService {
         errorMessage: error.message,
       };
     }
+  }
+
+  async completeTaskAction(taskId: string) {
+    await this.logService.addLog(
+      taskId,
+      LOG_STAGE.completed,
+      `[${moment().format(
+        'YYYY-MM-DD HH:mm:ss'
+      )}] finished render task completed`
+    );
+    this.archiveService.archiveLogs(taskId);
   }
 
   /**

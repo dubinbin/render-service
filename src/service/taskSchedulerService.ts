@@ -1,4 +1,14 @@
-import { Provide, Inject, Config, Init, App } from '@midwayjs/core';
+import {
+  Provide,
+  Inject,
+  Config,
+  App,
+  Init,
+  ScopeEnum,
+  Scope,
+  ApplicationContext,
+  IMidwayContainer,
+} from '@midwayjs/core';
 import { TaskMessage, TaskResult } from '../interface/task';
 import { TaskStatus } from '../constant/taskStatus';
 import { RedisService } from '@midwayjs/redis';
@@ -8,10 +18,15 @@ import { RabbitMQService } from './rabbitmq';
 import { TaskPersistenceService } from './taskPersistenceService';
 import { v4 as uuidv4 } from 'uuid';
 import { RenderTaskService } from './renderTaskService';
-import { IRenderDataType } from '@/constant';
+import { IRenderDataType, LOG_STAGE } from '@/constant';
+import { LogService } from './log.service';
 
-@Provide()
+@Provide('taskSchedulerService')
+@Scope(ScopeEnum.Singleton)
 export class TaskSchedulerService {
+  @ApplicationContext()
+  applicationContext: IMidwayContainer;
+
   @Inject()
   redisService: RedisService;
 
@@ -29,6 +44,9 @@ export class TaskSchedulerService {
 
   @App()
   app: Application;
+
+  @Inject()
+  logService: LogService;
 
   @Config('task')
   taskConfig: {
@@ -54,13 +72,15 @@ export class TaskSchedulerService {
 
   @Init()
   async init() {
-    await this.recoverProcessingTasks();
-
-    this.startTaskProcessing();
-
-    await this.setupRabbitMQConsumer();
-
-    this.logger.info('任务调度器已初始化');
+    try {
+      await this.recoverProcessingTasks();
+      this.startTaskProcessing();
+      await this.setupRabbitMQConsumer();
+      this.logger.info('任务调度器已初始化');
+    } catch (error) {
+      this.logger.error('任务调度器初始化失败:', error);
+      throw error;
+    }
   }
 
   /**
@@ -74,45 +94,61 @@ export class TaskSchedulerService {
     },
     priority = 10
   ): Promise<TaskMessage> {
-    // 验证任务类型是否支持
-    if (!this.taskConfig.taskTypes[type]) {
-      throw new Error(`不支持的任务类型: ${type}`);
+    const taskId = uuidv4();
+    try {
+      // 验证任务类型是否支持
+      if (!this.taskConfig.taskTypes[type]) {
+        throw new Error(`不支持的任务类型: ${type}`);
+      }
+
+      // 创建任务
+      const task: TaskMessage = {
+        id: taskId,
+        type,
+        data,
+        projectId: data.projectId,
+        status: TaskStatus.PENDING,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        priority,
+      };
+
+      // 将任务信息存储到Redis
+      await this.redisService.set(
+        `${this.TASK_INFO_PREFIX}${task.id}`,
+        JSON.stringify(task)
+      );
+
+      // 根据优先级添加到Redis队列
+      // 使用Sorted Set，以优先级作为分数，确保按优先级顺序处理任务
+      await this.redisService.zadd(this.TASK_QUEUE_KEY, priority, task.id);
+
+      await this.taskPersistence.saveTask(task);
+
+      await this.rabbitmqService.sendMessage(this.RABBITMQ_QUEUE, {
+        taskId: task.id,
+        action: 'create',
+      });
+
+      this.logger.info(
+        `创建任务[${task.type}], ID: ${task.id}, 优先级: ${priority}`
+      );
+
+      this.logService.addLog(
+        task.id,
+        LOG_STAGE.start,
+        `创建任务[${task.type}]成功, ID: ${task.id}, 优先级: ${priority}`
+      );
+
+      return task;
+    } catch (error) {
+      this.logService.addLog(
+        taskId,
+        LOG_STAGE.start,
+        `创建任务[${type}]创建失败: ${error}`
+      );
+      throw error;
     }
-
-    // 创建任务
-    const task: TaskMessage = {
-      id: uuidv4(),
-      type,
-      data,
-      projectId: data.projectId,
-      status: TaskStatus.PENDING,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      priority,
-    };
-
-    // 将任务信息存储到Redis
-    await this.redisService.set(
-      `${this.TASK_INFO_PREFIX}${task.id}`,
-      JSON.stringify(task)
-    );
-
-    // 根据优先级添加到Redis队列
-    // 使用Sorted Set，以优先级作为分数，确保按优先级顺序处理任务
-    await this.redisService.zadd(this.TASK_QUEUE_KEY, priority, task.id);
-
-    await this.taskPersistence.saveTask(task);
-
-    await this.rabbitmqService.sendMessage(this.RABBITMQ_QUEUE, {
-      taskId: task.id,
-      action: 'create',
-    });
-
-    this.logger.info(
-      `创建任务[${task.type}], ID: ${task.id}, 优先级: ${priority}`
-    );
-
-    return task;
   }
 
   /**
@@ -325,7 +361,6 @@ export class TaskSchedulerService {
         throw new Error(`找不到处理函数: ${taskConfig.handler}`);
       }
 
-      this.logger.info(service);
       // 设置任务超时
       const timeout = taskConfig.timeout || this.taskConfig.taskTimeout;
 
@@ -444,7 +479,13 @@ export class TaskSchedulerService {
       async message => {
         try {
           const content = JSON.parse(message.content.toString());
-          const { taskId, action, status, additionalInfo, timestamp } = content;
+          const {
+            taskId,
+            action,
+            status,
+            additionalInfo,
+            timestamp = Date.now(),
+          } = content;
 
           this.logger.info(
             `收到RabbitMQ消息: ${action}, 任务ID: ${taskId}, 时间戳: ${timestamp}`
@@ -463,9 +504,6 @@ export class TaskSchedulerService {
 
           // 幂等性检查：只处理更新的消息
           if (task.updatedAt && timestamp <= task.updatedAt) {
-            this.logger.info(
-              `收到过时消息，当前时间戳: ${task.updatedAt}, 消息时间戳: ${timestamp}, 忽略`
-            );
             return;
           }
 

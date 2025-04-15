@@ -1,4 +1,4 @@
-import { Provide, Inject } from '@midwayjs/core';
+import { Provide, Inject, Scope, ScopeEnum } from '@midwayjs/core';
 import { TaskMessage, TaskResult } from '../interface/task';
 import { ILogger } from '@midwayjs/logger';
 import { TaskSchedulerService } from './taskSchedulerService';
@@ -6,6 +6,7 @@ import { GeneratePythonScriptService } from './createPythonScript';
 import { IRenderDataType } from '@/constant';
 
 @Provide()
+@Scope(ScopeEnum.Request, { allowDowngrade: true })
 export class RenderTaskService {
   @Inject()
   logger: ILogger;
@@ -25,7 +26,6 @@ export class RenderTaskService {
     try {
       this.logger.info(`开始处理渲染任务: ${task.id}`);
 
-      // 模拟渲染结果
       const renderResult =
         await this.GeneratePythonScriptService.StartCreateAndExecuteScript(
           task.id,

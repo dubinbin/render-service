@@ -1,10 +1,11 @@
-import { Provide, Inject } from '@midwayjs/core';
+import { Provide, Inject, Scope, ScopeEnum } from '@midwayjs/core';
 import { TaskMessage } from '../interface/task';
 import { ILogger } from '@midwayjs/logger';
 import { TaskStatus } from '../constant/taskStatus';
 import { PrismaService } from '@/providers/prisma';
 
 @Provide()
+@Scope(ScopeEnum.Singleton)
 export class TaskPersistenceService {
   @Inject()
   logger: ILogger;
@@ -24,6 +25,15 @@ export class TaskPersistenceService {
       const completedAt = task.completedAt
         ? new Date(task.completedAt).toISOString()
         : null;
+
+      const project = await PrismaService.project.findFirst({
+        where: { projectId: task.data.projectId },
+      });
+
+      if (!project) {
+        throw new Error(`Project with ID ${task.projectId} does not exist`);
+      }
+
       await PrismaService.task.upsert({
         where: { id: task.id },
         update: {
@@ -33,6 +43,8 @@ export class TaskPersistenceService {
           completedAt: completedAt,
           error: task.error,
           progress: task.progress || 0,
+          priority: task.priority || 10,
+          projectId: task.projectId,
         },
         create: {
           id: task.id,

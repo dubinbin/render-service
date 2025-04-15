@@ -40,5 +40,7 @@ export class MainConfiguration {
     // add filter
     this.app.useFilter(DefaultFilter);
     this.app.useMiddleware(ResponseMiddleware);
+
+    await this.app.getApplicationContext().getAsync('taskSchedulerService');
   }
 }

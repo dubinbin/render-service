@@ -5,6 +5,8 @@ import { ScriptExecutorService } from './scriptExecutorService';
 import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
+import { LOG_STAGE } from '@/constant';
+import { LogService } from './log.service';
 
 const writeFileAsync = promisify(fs.writeFile);
 const mkdirAsync = promisify(fs.mkdir);
@@ -19,6 +21,9 @@ export class GeneratePythonScriptService {
 
   @Inject()
   scriptExecutor: ScriptExecutorService;
+
+  @Inject()
+  logService: LogService;
 
   @Config('render')
   renderConfig: {
@@ -174,11 +179,28 @@ print("渲染完成，图像已保存到:", output_file)
       // 6. 创建文件并写入内容
       await writeFileAsync(scriptPath, pythonTemplate);
 
+      this.logService.addLog(
+        taskId,
+        LOG_STAGE.start,
+        `Python脚本已生成: ${scriptPath}`
+      );
+
+      this.logService.addLog(
+        taskId,
+        LOG_STAGE.start,
+        `输出将保存到: ${outputFilePath}`
+      );
+
       this.logger.info(`Python脚本已生成: ${scriptPath}`);
       this.logger.info(`输出将保存到: ${outputFilePath}`);
 
       return scriptPath;
     } catch (error) {
+      this.logService.addLog(
+        taskId,
+        LOG_STAGE.start,
+        `创建Python脚本失败: ${error}`
+      );
       this.logger.error('创建Python脚本失败', error);
       throw new Error(`创建Python脚本失败: ${error.message}`);
     }

@@ -3,7 +3,6 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 export default {
-  // use for cookie sign key, should change to your own and keep security
   keys: '1733214267974_3114',
   koa: {
     port: 7001,
