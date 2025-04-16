@@ -3,7 +3,7 @@ import { TaskMessage, TaskResult } from '../interface/task';
 import { ILogger } from '@midwayjs/logger';
 import { TaskSchedulerService } from './taskSchedulerService';
 import { GeneratePythonScriptService } from './createPythonScript';
-import { IRenderDataType } from '@/constant';
+import { IRenderTaskType } from '@/constant';
 
 @Provide()
 @Scope(ScopeEnum.Request, { allowDowngrade: true })
@@ -50,10 +50,7 @@ export class RenderTaskService {
   /**
    * 创建新的渲染任务
    */
-  async createRenderTask(data: {
-    projectId: string;
-    settings: IRenderDataType;
-  }): Promise<TaskMessage> {
+  async createRenderTask(data: IRenderTaskType): Promise<TaskMessage> {
     return this.taskScheduler.createTask('render', data);
   }
 }

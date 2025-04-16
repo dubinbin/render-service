@@ -13,7 +13,7 @@ import { TaskSchedulerService } from '../service/taskSchedulerService';
 import { TaskPersistenceService } from '../service/taskPersistenceService';
 import { ScriptExecutorService } from '../service/scriptExecutorService';
 import { TaskStatus } from '../constant/taskStatus';
-import { IRenderDataType } from '@/constant';
+import { IRenderTaskType } from '@/constant';
 
 @Provide()
 @Controller('/api/render')
@@ -36,16 +36,14 @@ export class RenderController {
   @Post('/tasks')
   async createRenderTask(
     @Body()
-    body: {
-      projectId: string;
-      settings: IRenderDataType;
-    }
+    body: IRenderTaskType
   ) {
     try {
       // 创建渲染任务
       const task = await this.renderTaskService.createRenderTask({
         projectId: body.projectId,
-        settings: body.settings,
+        payload: body.payload,
+        token: body.token,
       });
 
       return {

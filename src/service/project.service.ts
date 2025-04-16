@@ -19,7 +19,11 @@ export class ProjectService {
         projectId: projectId,
       },
       include: {
-        Task: true,
+        Task: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
   }

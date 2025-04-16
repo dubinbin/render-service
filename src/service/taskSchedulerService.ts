@@ -18,7 +18,7 @@ import { RabbitMQService } from './rabbitmq';
 import { TaskPersistenceService } from './taskPersistenceService';
 import { v4 as uuidv4 } from 'uuid';
 import { RenderTaskService } from './renderTaskService';
-import { IRenderDataType, LOG_STAGE } from '@/constant';
+import { IRenderTaskType, LOG_STAGE } from '@/constant';
 import { LogService } from './log.service';
 
 @Provide('taskSchedulerService')
@@ -88,10 +88,7 @@ export class TaskSchedulerService {
    */
   async createTask(
     type: string,
-    data: {
-      projectId: string;
-      settings: IRenderDataType;
-    },
+    data: IRenderTaskType,
     priority = 10
   ): Promise<TaskMessage> {
     const taskId = uuidv4();
@@ -105,7 +102,10 @@ export class TaskSchedulerService {
       const task: TaskMessage = {
         id: taskId,
         type,
-        data,
+        data: {
+          ...data,
+          payload: JSON.stringify(data.payload),
+        },
         projectId: data.projectId,
         status: TaskStatus.PENDING,
         createdAt: Date.now(),

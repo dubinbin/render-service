@@ -29,8 +29,8 @@ export class TaskPersistenceService {
       const project = await PrismaService.project.findFirst({
         where: { projectId: task.data.projectId },
       });
-
       if (!project) {
+        this.logger.error(`task info: ${JSON.stringify(task)}`);
         throw new Error(`Project with ID ${task.projectId} does not exist`);
       }
 

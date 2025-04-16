@@ -14,14 +14,50 @@ export enum TASK_STATUS_FROM_MQTT {
   'working' = 'working',
 }
 
-export type IRenderDataType = {
-  resolution: string;
-  quality: string;
-  frames: number;
-};
-
 export enum LOG_STAGE {
   'start' = 'start',
   'processing' = 'processing',
   'completed' = 'completed',
+}
+
+export interface IRenderTaskTypeFromTask {
+  token: number;
+  projectId: string;
+  payload: string;
+}
+
+export interface IRenderTaskType {
+  token: number;
+  projectId: string;
+  payload: IRenderDataType;
+}
+
+export interface IRenderDataType {
+  camera: CameraParams[];
+  modelName: string;
+  renderParams: RenderParams;
+  materialList: MaterialList[];
+}
+
+export interface MaterialList {
+  originalMaterialName: string;
+  newMaterialName: string;
+  properties: MaterialProperties;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface MaterialProperties {}
+
+export interface RenderParams {
+  quality: string;
+}
+
+export interface CameraParams {
+  x: number;
+  y: number;
+  z: number;
+  cameraPitch: number;
+  cameraYaw: number;
+  cameraRoll: number;
+  cameraZoom: number;
 }
