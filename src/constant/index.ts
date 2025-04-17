@@ -6,6 +6,8 @@ export const DAY_EXPIRE = 15;
 
 export const ONE_DAY_LEN = 24 * 60 * 60 * 1000;
 
+export const CALLBACK_CLIENT_URL = 'http://192.168.20.165:3000';
+
 export enum TASK_STATUS_FROM_MQTT {
   'finished' = 'finished',
   'accept' = 'accept',
@@ -21,15 +23,17 @@ export enum LOG_STAGE {
 }
 
 export interface IRenderTaskTypeFromTask {
-  token: number;
   projectId: string;
   payload: string;
+  clientId: string;
+  clientJwt: string;
 }
 
 export interface IRenderTaskType {
-  token: number;
   projectId: string;
   payload: IRenderDataType;
+  clientId: string;
+  clientJwt: string;
 }
 
 export interface IRenderDataType {

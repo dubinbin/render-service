@@ -97,7 +97,6 @@ export class TaskSchedulerService {
       if (!this.taskConfig.taskTypes[type]) {
         throw new Error(`不支持的任务类型: ${type}`);
       }
-
       // 创建任务
       const task: TaskMessage = {
         id: taskId,
@@ -111,6 +110,8 @@ export class TaskSchedulerService {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         priority,
+        clientId: data.clientId,
+        clientJwt: data.clientJwt,
       };
 
       // 将任务信息存储到Redis

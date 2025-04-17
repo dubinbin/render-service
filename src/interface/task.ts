@@ -13,6 +13,8 @@ export interface TaskMessage {
   progress?: number; // 0-100
   priority?: number; // 优先级，数字越小优先级越高
   projectId?: string;
+  clientId?: string;
+  clientJwt?: string;
 }
 
 export interface TaskResult {

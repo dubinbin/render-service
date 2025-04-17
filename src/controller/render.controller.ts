@@ -7,6 +7,7 @@ import {
   Provide,
   Inject,
   Param,
+  Headers,
 } from '@midwayjs/core';
 import { RenderTaskService } from '../service/renderTaskService';
 import { TaskSchedulerService } from '../service/taskSchedulerService';
@@ -36,14 +37,23 @@ export class RenderController {
   @Post('/tasks')
   async createRenderTask(
     @Body()
-    body: IRenderTaskType
+    body: IRenderTaskType,
+    @Headers('authorization') token: string
   ) {
     try {
+      let jwt = '';
+      if (token && token.startsWith('Bearer ')) {
+        jwt = token.slice(7); // 移除 "Bearer " 前缀
+        // 使用 jwt...
+      } else {
+        throw new Error('Authorization is required');
+      }
       // 创建渲染任务
       const task = await this.renderTaskService.createRenderTask({
         projectId: body.projectId,
         payload: body.payload,
-        token: body.token,
+        clientId: body.clientId, // 前端回传callback的clientId
+        clientJwt: jwt,
       });
 
       return {

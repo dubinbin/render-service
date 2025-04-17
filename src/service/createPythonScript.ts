@@ -48,11 +48,14 @@ export class GeneratePythonScriptService {
     try {
       // 生成脚本
       const scriptPath = await this.createBlenderScript(taskId, params);
-
       // 执行脚本
       const result = await this.scriptExecutor.executeScript(
         taskId,
-        scriptPath
+        scriptPath,
+        {
+          clientId: params?.clientId || '',
+          clientJwt: params?.clientJwt || '',
+        }
       );
 
       return {
@@ -63,15 +66,6 @@ export class GeneratePythonScriptService {
       this.logger.error(`创建并执行脚本失败: ${error.message}`, error);
       throw error;
     }
-  }
-
-  async getReplaceMaterialFormConfig(config: {
-    [key: string]: {
-      materialName: string;
-      materialPath: string;
-    };
-  }) {
-    console.error(config);
   }
 
   /**
@@ -89,7 +83,6 @@ export class GeneratePythonScriptService {
       const renderParamsResult = JSON.parse(
         data.payload || '{}'
       ) as IRenderDataType;
-      console.error(renderParamsResult);
       const cameraParams = renderParamsResult?.camera[0];
       const materialList = renderParamsResult?.materialList;
 
@@ -117,21 +110,6 @@ export class GeneratePythonScriptService {
       const pythonTemplate = await fs.promises.readFile(templatePath, 'utf-8');
       // 1. 替换模板中的变量
       const renderOutputDir = `./render_output/${taskId}/`;
-      console.error('renderParamsResult', {
-        blendFilePath: `/Users/ryderdu/Desktop/mock_data/${renderParamsResult?.modelName}.blend`,
-        taskId,
-        cameraLocationX: x,
-        cameraLocationY: y,
-        cameraLocationZ: z,
-        cameraPitch: cameraPitch,
-        cameraYaw: cameraYaw,
-        cameraRoll: cameraRoll,
-        cameraZoom: cameraZoom,
-        outputDir: renderOutputDir,
-        replacementItems: replacementItemsArr,
-        quality,
-      });
-
       const renderedTemplate = renderTemplate(pythonTemplate, {
         blendFilePath: `/Users/ryderdu/Desktop/mock_data/${renderParamsResult?.modelName}.blend`,
         taskId,

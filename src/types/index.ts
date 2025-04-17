@@ -26,3 +26,8 @@ export interface RenderParams {
   replacementItems: ReplacementItem[]; // 新增的替换项数组
   quality: string;
 }
+
+export interface CallbackParams {
+  clientId: string;
+  clientJwt: string;
+}
