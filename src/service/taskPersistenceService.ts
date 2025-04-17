@@ -26,51 +26,99 @@ export class TaskPersistenceService {
         ? new Date(task.completedAt).toISOString()
         : null;
 
-      const project = await PrismaService.project.findFirst({
-        where: { projectId: task.data.projectId },
-      });
-      if (!project) {
-        this.logger.error(`task info: ${JSON.stringify(task)}`);
-        throw new Error(`Project with ID ${task.projectId} does not exist`);
-      }
+      // 使用事务来确保原子性
+      await PrismaService.$transaction(async prisma => {
+        // 先尝试查找项目
+        let project = await prisma.project.findUnique({
+          where: {
+            projectId: task.projectId,
+          },
+        });
 
-      await PrismaService.task.upsert({
-        where: { id: task.id },
-        update: {
-          status: task.status,
-          updatedAt: updatedAt,
-          startedAt: startedAt,
-          completedAt: completedAt,
-          error: task.error,
-          progress: task.progress || 0,
-          priority: task.priority || 10,
-          projectId: task.projectId,
-        },
-        create: {
-          id: task.id,
-          type: task.type,
-          data: task.data,
-          status: task.status,
-          createdAt: new Date(task.createdAt),
-          updatedAt: updatedAt,
-          startedAt: startedAt,
-          completedAt: completedAt,
-          error: task.error,
-          progress: task.progress || 0,
-          priority: task.priority || 10,
-          projectId: task.projectId,
-        },
-      });
+        // 如果项目不存在，则创建
+        if (!project) {
+          try {
+            project = await prisma.project.create({
+              data: {
+                projectId: task.projectId,
+                name: `render task ${task.id}`,
+                assignee: 'hkcrc',
+                model: 'default',
+              },
+            });
+          } catch (createError) {
+            // 如果创建失败（可能是并发创建），再次尝试查找
+            if (createError.code === 'P2002') {
+              project = await prisma.project.findUnique({
+                where: {
+                  projectId: task.projectId,
+                },
+              });
 
+              if (!project) {
+                throw new Error('Failed to create or find project');
+              }
+            } else {
+              throw createError;
+            }
+          }
+        }
+
+        try {
+          // 更新或创建任务
+          await prisma.task.upsert({
+            where: { id: task.id },
+            update: {
+              status: task.status,
+              updatedAt: updatedAt,
+              startedAt: startedAt,
+              completedAt: completedAt,
+              error: task.error,
+              progress: task.progress || 0,
+              priority: task.priority || 10,
+              projectId: project.projectId,
+            },
+            create: {
+              id: task.id,
+              type: task.type,
+              data: task.data,
+              status: task.status,
+              createdAt: new Date(task.createdAt),
+              updatedAt: updatedAt,
+              startedAt: startedAt,
+              completedAt: completedAt,
+              error: task.error,
+              progress: task.progress || 0,
+              priority: task.priority || 10,
+              projectId: project.projectId,
+            },
+          });
+        } catch (error) {
+          this.logger.info(
+            `任务[${task.id}]持久化失败step Error1: ${error.message}`,
+            {
+              error,
+              taskId: task.id,
+              projectId: task.projectId,
+            }
+          );
+        }
+      });
       this.logger.info(
         `任务[${task.id}]已持久化到数据库, 状态: ${task.status}`
       );
     } catch (error) {
-      this.logger.error(`任务[${task.id}]持久化失败`, error);
+      this.logger.info(
+        `任务[${task.id}]持久化失败step Error2: ${error.message}`,
+        {
+          error,
+          taskId: task.id,
+          projectId: task.projectId,
+        }
+      );
       // 这里我们只记录错误，不抛出异常，避免影响主流程
     }
   }
-
   /**
    * 获取任务信息从数据库
    * @param taskId 任务ID

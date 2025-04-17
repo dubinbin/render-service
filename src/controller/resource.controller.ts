@@ -1,27 +1,27 @@
-import { Controller, Get, Param } from '@midwayjs/core';
-import * as fs from 'fs';
-import * as path from 'path';
+import { FileService } from '@/service/file.service';
+import { Controller, Get, ILogger, Inject, Param } from '@midwayjs/core';
 
 @Controller('/api/resource')
 export class ResourceController {
+  @Inject()
+  logger: ILogger;
+
+  @Inject()
+  fileService: FileService;
+
   @Get('/img/:taskId')
   async getResource(@Param('taskId') taskId: string) {
     try {
-      const filePath = path.join(
-        process.cwd(),
-        'render_output',
-        taskId,
-        `${taskId}.png` || `${taskId}.jpg`
-      );
-      const imgFile = fs.readFileSync(filePath);
+      const result = await this.fileService.uploadFile(taskId);
       return {
-        success: true,
-        data: imgFile,
+        success: result.success,
+        url: result.url,
       };
     } catch (error) {
       return {
         success: false,
         error: error.message || '获取资源失败',
+        url: '',
       };
     }
   }

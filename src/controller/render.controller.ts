@@ -97,7 +97,7 @@ export class RenderController {
           completedAt: task.completedAt,
           progress: task.progress || 0,
           error: task.error,
-          result: task.status === TaskStatus.COMPLETED ? task.data : null,
+          result: task.data,
         },
       };
     } catch (error) {

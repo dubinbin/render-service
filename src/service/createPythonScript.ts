@@ -55,6 +55,7 @@ export class GeneratePythonScriptService {
         {
           clientId: params?.clientId || '',
           clientJwt: params?.clientJwt || '',
+          fileDataId: params?.projectId || '',
         }
       );
 

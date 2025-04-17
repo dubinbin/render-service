@@ -114,6 +114,8 @@ export class TaskSchedulerService {
         clientJwt: data.clientJwt,
       };
 
+      this.logger.info(`创建任务: ${JSON.stringify(task)}`);
+
       // 将任务信息存储到Redis
       await this.redisService.set(
         `${this.TASK_INFO_PREFIX}${task.id}`,

@@ -30,4 +30,5 @@ export interface RenderParams {
 export interface CallbackParams {
   clientId: string;
   clientJwt: string;
+  fileDataId: string;
 }

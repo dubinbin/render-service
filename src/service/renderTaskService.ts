@@ -25,7 +25,6 @@ export class RenderTaskService {
   async processRenderTask(task: TaskMessage): Promise<TaskResult> {
     try {
       this.logger.info(`开始处理渲染任务: ${task.id}`);
-      this.logger.info(`task data: ${JSON.stringify(task.data)}`);
       const renderResult =
         await this.GeneratePythonScriptService.StartCreateAndExecuteScript(
           task.id,

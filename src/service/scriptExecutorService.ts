@@ -13,6 +13,7 @@ import { LogService } from './log.service';
 import { CALLBACK_CLIENT_URL, LOG_STAGE } from '@/constant';
 import { ArchiveService } from './archive.service';
 import { CallbackParams } from '@/types';
+import { FileService } from './file.service';
 
 const mkdirAsync = promisify(fs.mkdir);
 // Replace deprecated fs.exists with fs.access
@@ -34,6 +35,9 @@ export class ScriptExecutorService {
 
   @Inject()
   archiveService: ArchiveService;
+
+  @Inject()
+  fileService: FileService;
 
   @Config('render')
   renderConfig: {
@@ -503,21 +507,29 @@ export class ScriptExecutorService {
 
   async callbackTaskToClient(taskId: string, callbackParams: CallbackParams) {
     // 给前端一个回调
-    const { clientId, clientJwt } = callbackParams;
+    const { clientId, clientJwt, fileDataId } = callbackParams;
+    const uploadResult = await this.fileService.uploadFile(taskId);
     try {
-      fetch(`${CALLBACK_CLIENT_URL}/api/renderPicSuccessFul`, {
-        method: 'POST',
-        body: JSON.stringify({
-          picName: `${taskId}.jpg`,
-          clientId,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-          'x-client-id': clientId || '',
-          'x-task-id': taskId || '',
-          Authorization: `Bearer ${clientJwt || ''}`,
-        },
-      });
+      const res = await fetch(
+        `${CALLBACK_CLIENT_URL}/api/renderPicSuccessFul`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            picName: uploadResult.url,
+            fileDataId: fileDataId,
+            clientId,
+          }),
+          headers: {
+            'Content-Type': 'application/json',
+            'x-client-id': clientId || '',
+            'x-task-id': taskId || '',
+            Authorization: `Bearer ${clientJwt || ''}`,
+          },
+        }
+      );
+      this.logger.info(
+        `回调前端成功: ${res.status} -- ${taskId} -- ${clientId} -- ${clientJwt} -- ${fileDataId} -- ${uploadResult.url}`
+      );
     } catch (error) {
       this.logger.error(`回调前端失败: ${error.message}`);
     }
