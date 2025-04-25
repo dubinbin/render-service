@@ -1,6 +1,7 @@
 import { MidwayConfig } from '@midwayjs/core';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import 'dotenv/config';
 
 export default {
   keys: '1733214267974_3114',

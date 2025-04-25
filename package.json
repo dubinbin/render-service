@@ -27,6 +27,7 @@
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.7",
     "bcrypt": "^5.1.1",
+    "dotenv": "^16.5.0",
     "moment": "^2.30.1",
     "mysql2": "^3.14.0",
     "passport-jwt": "^4.0.1",
