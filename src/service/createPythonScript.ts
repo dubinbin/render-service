@@ -110,7 +110,7 @@ export class GeneratePythonScriptService {
       );
       const pythonTemplate = await fs.promises.readFile(templatePath, 'utf-8');
       // 1. 替换模板中的变量
-      const renderOutputDir = `./render_output/${taskId}/`;
+      const renderOutputDir = `${this.renderConfig.outputDir}/${taskId}/`;
       const renderedTemplate = renderTemplate(pythonTemplate, {
         blendFilePath: `/Users/ryderdu/Desktop/mock_data/${renderParamsResult?.modelName}.blend`,
         taskId,

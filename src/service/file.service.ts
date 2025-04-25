@@ -1,4 +1,4 @@
-import { Provide, Inject, ILogger } from '@midwayjs/core';
+import { Provide, Inject, ILogger, Config } from '@midwayjs/core';
 import path = require('path');
 import fs = require('fs');
 import { FILE_DATA_PATH } from '@/constant';
@@ -8,12 +8,15 @@ export class FileService {
   @Inject()
   logger: ILogger;
 
+  @Config('render')
+  renderConfig: {
+    outputDir: string;
+  };
   async uploadFile(taskId: string) {
     try {
       // 构建文件路径
       const filePath = path.join(
-        process.cwd(),
-        'render_output',
+        this.renderConfig.outputDir || `${process.cwd()}/render_output`,
         taskId,
         `${taskId}.jpg`
       );

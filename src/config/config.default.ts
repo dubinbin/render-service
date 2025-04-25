@@ -52,6 +52,11 @@ export default {
     '@': join(__dirname, '../'),
   },
   render: {
-    outputDir: join(process.cwd(), 'render_output'),
+    outputDir:
+      process.env.RENDER_OUTPUT_DIR || join(process.cwd(), 'render_output'),
+  },
+  logger: {
+    // 优先使用环境变量，否则使用默认值
+    logDir: process.env.LOGGER_DIR || join(process.cwd(), 'run_log'),
   },
 } as MidwayConfig;

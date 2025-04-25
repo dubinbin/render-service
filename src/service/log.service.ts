@@ -1,4 +1,4 @@
-import { Provide, Inject, Scope, ScopeEnum } from '@midwayjs/core';
+import { Provide, Inject, Scope, ScopeEnum, Config } from '@midwayjs/core';
 import { RedisService } from '@midwayjs/redis';
 import { ILogger } from '@midwayjs/logger';
 
@@ -10,6 +10,11 @@ export class LogService {
 
   @Inject()
   logger: ILogger;
+
+  @Config('logger')
+  loggerConfig: {
+    logDir: string;
+  };
 
   async addLog(taskId: string, stage: string, message: string) {
     await this.redisService.xadd(
@@ -48,7 +53,12 @@ export class LogService {
       if (!logs || logs.length === 0) {
         const fs = require('fs');
         const path = require('path');
-        const logPath = path.join(process.cwd(), 'run_log', `${taskId}.json`);
+        const logPath = path.join(this.loggerConfig.logDir, `${taskId}.json`);
+
+        // 确保日志目录存在
+        if (!fs.existsSync(this.loggerConfig.logDir)) {
+          fs.mkdirSync(this.loggerConfig.logDir, { recursive: true });
+        }
 
         if (fs.existsSync(logPath)) {
           const fileContent = fs.readFileSync(logPath, 'utf8');
