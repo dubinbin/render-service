@@ -137,11 +137,29 @@ scene = bpy.context.scene
 cycles = scene.cycles
 
 cycles.device = 'GPU'
-cycles.samples = 32
+cycles.samples = 64
 cycles.use_adaptive_sampling = True
-cycles.adaptive_threshold = 0.1
-cycles.adaptive_min_samples = 32
-cycles.tile_size = 32
+cycles.adaptive_threshold = 0.01
+cycles.adaptive_min_samples = 64
+cycles.tile_size = 64
+
+
+cycles.use_denoising = True
+# cycles.denoiser = 'OPENIMAGEDENOISE'
+# cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'
+
+# 2. 光线弹射设置
+cycles.max_bounces = 4       # 总弹射次数
+cycles.diffuse_bounces = 2   # 漫反射弹射
+cycles.glossy_bounces = 2   # 光泽弹射
+cycles.transmission_bounces = 4  # 透射弹射
+cycles.volume_bounces = 0    # 体积弹射
+cycles.transparent_max_bounces = 4  # 透明弹射
+
+
+# 3. 因果设置
+# cycles.caustics_reflective = True  # 反射因果
+# cycles.caustics_refractive = True  # 折射因果
 
 # 设置渲染输出路径
 output_dir = outputDir
@@ -162,10 +180,21 @@ bpy.context.scene.render.filepath = output_file
 resolution = resolution_map.get(quality.lower(), (1280, 720))
 print(f"设置渲染分辨率为: {quality} ({resolution[0]}x{resolution[1]})")
 
+bpy.context.scene.render.image_settings.file_format = 'JPEG'
+bpy.context.scene.render.image_settings.quality = 100  # JPEG质量
+bpy.context.scene.render.image_settings.color_mode = 'RGB'
+bpy.context.scene.render.image_settings.color_depth = '8'  # 可选: '8', '16', '32'
+
 # 设置渲染分辨率
 bpy.context.scene.render.resolution_x = resolution[0]
 bpy.context.scene.render.resolution_y = resolution[1]
-bpy.context.scene.render.resolution_percentage = 50
+bpy.context.scene.render.resolution_percentage = 100
+
+# 6. 色彩管理
+scene.view_settings.view_transform = 'Filmic'  # 更好的HDR处理
+scene.view_settings.look = 'None'
+scene.view_settings.exposure = 0
+scene.view_settings.gamma = 1.0
 
 # 执行渲染并保存图像
 bpy.ops.render.render(write_still=True)

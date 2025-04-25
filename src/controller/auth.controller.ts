@@ -93,7 +93,7 @@ export class APIController {
         // long token过期了只能登陆了
         return {
           success: false,
-          message: 'refresh token已失效',
+          message: 'refresh token expired',
         };
       }
       const tokenPayload = { userId: user.userId, email: user.email };
@@ -110,7 +110,7 @@ export class APIController {
           access_token: generateJwt,
           refresh_token: generateLongJwt,
         },
-        message: '获取成功',
+        message: 'get token success',
       };
     } catch (e) {
       this.ctx.logger.info(e);
@@ -128,7 +128,7 @@ export class APIController {
       return {
         success: true,
         data: user,
-        message: '获取成功',
+        message: 'get user info success',
       }; // 如果需要返回用户信息
     } catch (e) {
       this.ctx.logger.info(e);

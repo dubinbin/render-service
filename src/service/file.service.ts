@@ -15,7 +15,7 @@ export class FileService {
         process.cwd(),
         'render_output',
         taskId,
-        `${taskId}.png`
+        `${taskId}.jpg`
       );
 
       // 检查文件是否存在
@@ -28,12 +28,12 @@ export class FileService {
 
       // 直接上传二进制数据
       const response = await fetch(
-        `${FILE_DATA_PATH}/render_output/${taskId}.png`,
+        `${FILE_DATA_PATH}/render_output/${taskId}.jpg`,
         {
           method: 'PUT',
           body: fileBuffer, // 直接发送文件buffer
           headers: {
-            'Content-Type': 'image/png', // 设置正确的 Content-Type
+            'Content-Type': 'image/jpeg', // 设置正确的 Content-Type
           },
         }
       );
@@ -42,15 +42,19 @@ export class FileService {
         throw new Error(`Upload failed with status: ${response.status}`);
       }
 
-      this.logger.info(`File uploaded successfully for task: ${taskId}`, {
-        status: response.status,
-        contentLength: fileBuffer.length,
-      });
+      this.logger.info(
+        `File uploaded successfully for task: ${taskId}`,
+        JSON.stringify({
+          success: response.ok,
+          message: `Upload completed with status ${response.status}`,
+          url: `${FILE_DATA_PATH}/render_output/${taskId}.jpg`,
+        })
+      );
 
       return {
         success: response.ok,
         message: `Upload completed with status ${response.status}`,
-        url: `${FILE_DATA_PATH}/render_output/${taskId}.png`,
+        url: `${FILE_DATA_PATH}/render_output/${taskId}.jpg`,
       };
     } catch (error: any) {
       this.logger.error(`Failed to upload file for task ${taskId}:`, {
@@ -69,7 +73,7 @@ export class FileService {
   async verifyUpload(taskId: string): Promise<boolean> {
     try {
       const response = await fetch(
-        `${FILE_DATA_PATH}/render_output/${taskId}.png`,
+        `${FILE_DATA_PATH}/render_output/${taskId}.jpg`,
         {
           method: 'HEAD', // 只获取头信息
         }

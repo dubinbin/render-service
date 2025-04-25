@@ -56,14 +56,20 @@ export class RenderController {
         clientJwt: jwt,
       });
 
-      return {
-        success: true,
-        data: {
-          taskId: task.id,
-          status: task.status,
-          createdAt: task.createdAt,
-        },
-      };
+      if (task.id) {
+        return {
+          success: true,
+          data: {
+            taskId: task.id,
+            createdAt: task.createdAt,
+          },
+        };
+      } else {
+        return {
+          success: false,
+          error: '创建渲染任务失败',
+        };
+      }
     } catch (error) {
       return {
         success: false,
@@ -165,18 +171,19 @@ export class RenderController {
       if (!success) {
         return {
           success: false,
-          error: '取消任务失败，任务可能不存在或已经开始执行',
+          error:
+            'task cancel failed, task may not exist or has already started',
         };
       }
 
       return {
         success: true,
-        data: { message: '任务已取消' },
+        data: { message: 'task canceled' },
       };
     } catch (error) {
       return {
         success: false,
-        error: error.message || '取消任务时出错',
+        error: error.message || 'task cancel failed',
       };
     }
   }
@@ -222,7 +229,7 @@ export class RenderController {
     } catch (error) {
       return {
         success: false,
-        error: error.message || '获取任务日志失败',
+        error: error.message || 'get task logs failed',
       };
     }
   }
