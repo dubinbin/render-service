@@ -59,4 +59,7 @@ export default {
     // 优先使用环境变量，否则使用默认值
     logDir: process.env.LOGGER_DIR || join(process.cwd(), 'run_log'),
   },
+  model: {
+    modelDir: process.env.MODEL_DIR || join(process.cwd(), 'model'),
+  },
 } as MidwayConfig;

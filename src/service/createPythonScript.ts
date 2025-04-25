@@ -35,6 +35,11 @@ export class GeneratePythonScriptService {
     outputDir: string;
   };
 
+  @Config('model')
+  modelConfig: {
+    modelDir: string;
+  };
+
   /**
    * 创建Python渲染脚本并执行
    * @param taskId 任务ID
@@ -112,7 +117,7 @@ export class GeneratePythonScriptService {
       // 1. 替换模板中的变量
       const renderOutputDir = `${this.renderConfig.outputDir}/${taskId}/`;
       const renderedTemplate = renderTemplate(pythonTemplate, {
-        blendFilePath: `/Users/ryderdu/Desktop/mock_data/${renderParamsResult?.modelName}.blend`,
+        blendFilePath: `${this.modelConfig.modelDir}/${renderParamsResult?.modelName}.blend`,
         taskId,
         cameraLocationX: x,
         cameraLocationY: y,
