@@ -15,6 +15,8 @@ import { TaskPersistenceService } from '../service/taskPersistenceService';
 import { ScriptExecutorService } from '../service/scriptExecutorService';
 import { TaskStatus } from '../constant/taskStatus';
 import { IRenderTaskType } from '@/constant';
+import { CallbackParams } from '@/types';
+import { ClientCallbackService } from '@/service/clientCallback.service';
 
 @Provide()
 @Controller('/api/render')
@@ -30,6 +32,9 @@ export class RenderController {
 
   @Inject()
   scriptExecutor: ScriptExecutorService;
+
+  @Inject()
+  clientCallbackService: ClientCallbackService;
 
   /**
    * 创建渲染任务
@@ -230,6 +235,23 @@ export class RenderController {
       return {
         success: false,
         error: error.message || 'get task logs failed',
+      };
+    }
+  }
+
+  @Post('/client-callback')
+  async callbackTaskToClient(
+    @Body() body: { taskId: string; callbackParams: CallbackParams }
+  ) {
+    try {
+      return await this.clientCallbackService.callbackTaskToClient(
+        body.taskId,
+        body.callbackParams
+      );
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message || 'callback task to client failed',
       };
     }
   }

@@ -39,7 +39,6 @@ export interface IRenderTaskType {
 }
 
 export interface IRenderDataType {
-  camera: CameraParams[];
   modelName: string;
   renderParams: RenderParams;
   materialList: MaterialList[];
@@ -56,14 +55,4 @@ export interface MaterialProperties {}
 
 export interface RenderParams {
   quality: string;
-}
-
-export interface CameraParams {
-  x: number;
-  y: number;
-  z: number;
-  cameraPitch: number;
-  cameraYaw: number;
-  cameraRoll: number;
-  cameraZoom: number;
 }

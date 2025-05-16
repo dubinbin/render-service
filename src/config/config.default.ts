@@ -54,6 +54,7 @@ export default {
   render: {
     outputDir:
       process.env.RENDER_OUTPUT_DIR || join(process.cwd(), 'render_output'),
+    blenderRunPath: process.env.BLENDER_PATH || 'blender',
   },
   logger: {
     // 优先使用环境变量，否则使用默认值

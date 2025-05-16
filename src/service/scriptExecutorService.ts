@@ -10,9 +10,8 @@ import * as moment from 'moment';
 import { promisify } from 'util';
 import * as readline from 'readline';
 import { LogService } from './log.service';
-import { CALLBACK_CLIENT_URL, LOG_STAGE } from '@/constant';
+import { LOG_STAGE } from '@/constant';
 import { ArchiveService } from './archive.service';
-import { CallbackParams } from '@/types';
 import { FileService } from './file.service';
 
 const mkdirAsync = promisify(fs.mkdir);
@@ -61,7 +60,6 @@ export class ScriptExecutorService {
   async executeScript(
     taskId: string,
     scriptPath: string,
-    callbackParams: CallbackParams,
     args: string[] = []
   ): Promise<{
     success: boolean;
@@ -300,7 +298,7 @@ export class ScriptExecutorService {
                 }
               );
 
-              this.completeTaskAction(taskId, callbackParams);
+              this.completeTaskAction(taskId);
 
               resolve({
                 success: true,
@@ -324,7 +322,7 @@ export class ScriptExecutorService {
                 )}] python script failed, exit code: ${code}`
               );
 
-              this.completeTaskAction(taskId, callbackParams);
+              this.completeTaskAction(taskId);
               // 提取错误信息
               const errorMessage =
                 errorOutput || `脚本执行失败，退出码: ${code}`;
@@ -474,7 +472,7 @@ export class ScriptExecutorService {
       );
       this.logger.error(`执行脚本时出错: ${error.message}`);
 
-      this.completeTaskAction(taskId, callbackParams);
+      this.completeTaskAction(taskId);
 
       // 更新任务状态为失败
       await this.taskScheduler.updateTaskStatus(taskId, TaskStatus.FAILED, {
@@ -491,10 +489,7 @@ export class ScriptExecutorService {
     }
   }
 
-  async completeTaskAction(taskId: string, callbackParams: CallbackParams) {
-    this.logger.info(
-      `完成任务-回调前端: ${taskId}-${callbackParams?.clientId}-${callbackParams?.clientJwt}`
-    );
+  async completeTaskAction(taskId: string) {
     await this.logService.addLog(
       taskId,
       LOG_STAGE.completed,
@@ -503,38 +498,6 @@ export class ScriptExecutorService {
       )}] finished render task completed`
     );
     this.archiveService.archiveLogs(taskId);
-    // 给前端一个回调
-    this.callbackTaskToClient(taskId, callbackParams);
-  }
-
-  async callbackTaskToClient(taskId: string, callbackParams: CallbackParams) {
-    // 给前端一个回调
-    const { clientId, clientJwt, fileDataId } = callbackParams;
-    const uploadResult = await this.fileService.uploadFile(taskId);
-    try {
-      const res = await fetch(
-        `${CALLBACK_CLIENT_URL}/api/renderPicSuccessFul`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            picName: uploadResult.url,
-            fileDataId: fileDataId,
-            clientId,
-          }),
-          headers: {
-            'Content-Type': 'application/json',
-            'x-client-id': clientId || '',
-            'x-task-id': taskId || '',
-            Authorization: `Bearer ${clientJwt || ''}`,
-          },
-        }
-      );
-      this.logger.info(
-        `回调前端成功: ${res.status} -- ${taskId} -- ${clientId} -- ${clientJwt} -- ${fileDataId} -- ${uploadResult.url}`
-      );
-    } catch (error) {
-      this.logger.error(`回调前端失败: ${error.message}`);
-    }
   }
 
   /**

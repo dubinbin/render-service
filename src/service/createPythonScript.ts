@@ -33,6 +33,7 @@ export class GeneratePythonScriptService {
   @Config('render')
   renderConfig: {
     outputDir: string;
+    blenderRunPath: string;
   };
 
   @Config('model')
@@ -56,12 +57,7 @@ export class GeneratePythonScriptService {
       // 执行脚本
       const result = await this.scriptExecutor.executeScript(
         taskId,
-        scriptPath,
-        {
-          clientId: params?.clientId || '',
-          clientJwt: params?.clientJwt || '',
-          fileDataId: params?.projectId || '',
-        }
+        scriptPath
       );
 
       return {
@@ -89,11 +85,7 @@ export class GeneratePythonScriptService {
       const renderParamsResult = JSON.parse(
         data.payload || '{}'
       ) as IRenderDataType;
-      const cameraParams = renderParamsResult?.camera[0];
       const materialList = renderParamsResult?.materialList;
-
-      const { x, y, z, cameraPitch, cameraYaw, cameraRoll, cameraZoom } =
-        cameraParams;
 
       const replacementItemsArr =
         materialList?.map(material => {
@@ -119,16 +111,13 @@ export class GeneratePythonScriptService {
       const renderedTemplate = renderTemplate(pythonTemplate, {
         blendFilePath: `${this.modelConfig.modelDir}/${renderParamsResult?.modelName}.blend`,
         taskId,
-        cameraLocationX: x,
-        cameraLocationY: y,
-        cameraLocationZ: z,
-        cameraPitch: cameraPitch,
-        cameraYaw: cameraYaw,
-        cameraRoll: cameraRoll,
-        cameraZoom: cameraZoom,
         outputDir: renderOutputDir,
         replacementItems: replacementItemsArr,
         quality,
+        blenderRunPath: this.renderConfig.blenderRunPath,
+        clientId: data?.clientId || '',
+        clientJwt: data?.clientJwt || '',
+        fileDataId: data?.projectId || '',
       });
       // 2. 确保脚本目录存在
       const scriptDir = this.renderConfig.outputDir;
