@@ -1,12 +1,16 @@
-import { CALLBACK_CLIENT_URL } from '@/constant';
+import { CALLBACK_CLIENT_URL, LOG_STAGE } from '@/constant';
 import { CallbackParams } from '@/types';
 import { ILogger, Inject, Provide } from '@midwayjs/core';
 import { FileService } from './file.service';
+import { LogService } from './log.service';
 
 @Provide()
 export class ClientCallbackService {
   @Inject()
   logger: ILogger;
+
+  @Inject()
+  logService: LogService;
 
   @Inject()
   fileService: FileService;
@@ -38,6 +42,36 @@ export class ClientCallbackService {
       );
     } catch (error) {
       this.logger.error(`回调前端失败: ${error.message}`);
+      this.logService.addLog(
+        taskId,
+        LOG_STAGE.processing,
+        `回调前端失败: ${error.message}`,
+        true,
+        callbackParams
+      );
+    }
+  }
+
+  async callbackErrorToClient(callbackParams: CallbackParams, message: string) {
+    const { clientId, fileDataId } = callbackParams;
+    try {
+      const data = {
+        fileDataId,
+        clientId,
+        type: 'pic',
+        message,
+      };
+      const params = new URLSearchParams(data);
+
+      await fetch(`${CALLBACK_CLIENT_URL}/api/renderModelOrPicError`, {
+        method: 'POST',
+        body: params.toString(),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+    } catch (e) {
+      this.logger.error(`callbackErrorToClient前端失败: ${e.message}`);
     }
   }
 }

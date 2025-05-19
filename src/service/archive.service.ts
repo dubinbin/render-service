@@ -16,7 +16,6 @@ export class ArchiveService {
 
   async writeToFile(filePath: string, logs: any[]) {
     const fs = require('fs');
-    console.error(`filePath: ${filePath}`);
     fs.writeFileSync(filePath, JSON.stringify(logs, null, 2));
   }
 

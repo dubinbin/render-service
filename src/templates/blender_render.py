@@ -9,6 +9,35 @@ import requests
 is_subprocess = False
 camera_index = 0
 
+
+# 用于向后端报告错误的函数
+def report_error(error_message):
+    try:
+        print(f"ERROR: {error_message}")  # 标准输出中打印错误
+        sys.stderr.write(f"ERROR: {error_message}\n")  # 向标准错误输出错误
+        
+        # 同时发送HTTP请求报告错误
+        response = requests.post(
+            f"http://localhost:7001/api/logs/error-callback",
+            json={
+                "taskId": taskId,
+                "error": error_message,
+                "callbackParams": {
+                    "clientId": clientId,
+                    "clientJwt": clientJwt,
+                    "fileDataId": fileDataId
+                }
+            },
+            timeout=10
+        )
+        print(f"错误报告状态: {response.status_code}")
+    except Exception as e:
+        print(f"报告错误时发生异常: {str(e)}")
+    
+    # 使用非零退出码退出程序
+    sys.exit(1)
+
+
 # 假设通过--camera_index参数传递相机索引
 if '--camera_index' in sys.argv:
     idx = sys.argv.index('--camera_index')
@@ -48,8 +77,13 @@ resolution_map = {
 
 # --- 1. 加载blend文件 ---
 if not os.path.exists(blend_file_path):
-    raise FileNotFoundError(f"Blend文件未找到: {blend_file_path}")
-bpy.ops.wm.open_mainfile(filepath=blend_file_path)
+    error_msg = f"Blend文件未找到: {blend_file_path}"
+    report_error(error_msg)  # 使用新函数报告错误
+
+try:
+    bpy.ops.wm.open_mainfile(filepath=blend_file_path)
+except Exception as e:
+    report_error(f"加载Blend文件失败: {str(e)}")
 
 # 获取所有相机信息
 all_cameras = [obj for obj in bpy.data.objects if obj.type == 'CAMERA']

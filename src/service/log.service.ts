@@ -1,6 +1,17 @@
-import { Provide, Inject, Scope, ScopeEnum, Config } from '@midwayjs/core';
+import {
+  Provide,
+  Inject,
+  Scope,
+  ScopeEnum,
+  Config,
+  Post,
+  Body,
+} from '@midwayjs/core';
 import { RedisService } from '@midwayjs/redis';
 import { ILogger } from '@midwayjs/logger';
+import { LOG_STAGE } from '@/constant';
+import { ClientCallbackService } from './clientCallback.service';
+import { CallbackParams } from '@/types';
 
 @Provide()
 @Scope(ScopeEnum.Request, { allowDowngrade: true })
@@ -16,18 +27,55 @@ export class LogService {
     logDir: string;
   };
 
-  async addLog(taskId: string, stage: string, message: string) {
-    await this.redisService.xadd(
-      `task:logs:${taskId}`,
-      '*',
-      'stage',
-      stage,
-      'message',
-      message,
-      'timestamp',
-      Date.now()
-    );
-    await this.redisService.xtrim(`task:logs:${taskId}`, 'MAXLEN', '~', 1000);
+  @Inject()
+  clientCallbackService: ClientCallbackService;
+
+  async addLog(
+    taskId: string,
+    stage: LOG_STAGE,
+    message: string,
+    errorUpload = false,
+    callbackParams?: CallbackParams
+  ) {
+    try {
+      await this.redisService.xadd(
+        `task:logs:${taskId}`,
+        '*',
+        'stage',
+        stage,
+        'message',
+        message,
+        'timestamp',
+        Date.now()
+      );
+      await this.redisService.xtrim(`task:logs:${taskId}`, 'MAXLEN', '~', 1000);
+      // 如果是一种特殊错误需要上传到第三方，这里做处理
+      if (errorUpload) {
+        console.error(`errorUpload is true, Error: ${message}`);
+        await this.clientCallbackService.callbackErrorToClient(
+          callbackParams,
+          message
+        );
+      }
+    } catch (error) {
+      console.error(`Error adding log: ${error}`);
+    }
+  }
+
+  @Post('/error-callback')
+  async handleRenderError(
+    @Body() body: { taskId: string; error: string; callbackParams: any }
+  ) {
+    try {
+      await this.clientCallbackService.callbackErrorToClient(
+        body.callbackParams,
+        body.error
+      );
+      return { success: true };
+    } catch (error) {
+      this.logger.error(`callbackErrorToClient error: ${error}`);
+      return { success: false };
+    }
   }
 
   async getLogs(taskId: string, stage?: string, count = 100) {

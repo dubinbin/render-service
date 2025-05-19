@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Query } from '@midwayjs/core';
+import { Body, Controller, Get, Inject, Post, Query } from '@midwayjs/core';
 import { LogService } from '../service/log.service';
 import { LOG_STAGE } from '@/constant';
 
@@ -14,5 +14,12 @@ export class LogController {
     @Query('count') count = 100
   ) {
     return this.logService.getLogs(taskId, stage, count);
+  }
+
+  @Post('/error-callback')
+  async handleRenderError(
+    @Body() body: { taskId: string; error: string; callbackParams: any }
+  ) {
+    return this.logService.handleRenderError(body);
   }
 }

@@ -10,7 +10,7 @@ import * as moment from 'moment';
 import { promisify } from 'util';
 import * as readline from 'readline';
 import { LogService } from './log.service';
-import { LOG_STAGE } from '@/constant';
+import { IRenderTaskTypeFromTask, LOG_STAGE } from '@/constant';
 import { ArchiveService } from './archive.service';
 import { FileService } from './file.service';
 
@@ -60,7 +60,7 @@ export class ScriptExecutorService {
   async executeScript(
     taskId: string,
     scriptPath: string,
-    args: string[] = []
+    params: IRenderTaskTypeFromTask
   ): Promise<{
     success: boolean;
     outputPath?: string;
@@ -109,18 +109,6 @@ export class ScriptExecutorService {
         logStream,
         `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 任务ID: ${taskId}`
       );
-      this.writeLog(
-        logStream,
-        `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 参数: ${args.join(' ')}`
-      );
-
-      this.logService.addLog(
-        taskId,
-        LOG_STAGE.processing,
-        `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 执行参数: ${args.join(
-          ' '
-        )}`
-      );
 
       // 更新任务状态为执行中
       await this.taskScheduler.updateTaskStatus(taskId, TaskStatus.PROCESSING);
@@ -144,7 +132,6 @@ export class ScriptExecutorService {
           '--background',
           '--python',
           scriptPath,
-          ...args,
         ]);
         let lastProgress = 0;
         let totalOutput = '';
@@ -240,7 +227,13 @@ export class ScriptExecutorService {
             this.logService.addLog(
               taskId,
               LOG_STAGE.processing,
-              `python script stderr: ${errorMatch[1]}`
+              `python script stderr: ${errorMatch[1]}`,
+              true,
+              {
+                clientId: params?.clientId,
+                fileDataId: params?.projectId,
+                clientJwt: params?.clientJwt,
+              }
             );
           }
         });
@@ -386,7 +379,13 @@ export class ScriptExecutorService {
             LOG_STAGE.processing,
             `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 启动脚本时出错: ${
               err.message
-            }`
+            }`,
+            true,
+            {
+              clientId: params?.clientId,
+              fileDataId: params?.projectId,
+              clientJwt: params?.clientJwt,
+            }
           );
           try {
             // 更新任务状态为失败
@@ -430,7 +429,13 @@ export class ScriptExecutorService {
             LOG_STAGE.processing,
             `[${moment().format('YYYY-MM-DD HH:mm:ss')}] 脚本执行超时 (${
               timeout / 1000
-            }秒)`
+            }秒)`,
+            true,
+            {
+              clientId: params?.clientId,
+              fileDataId: params?.projectId,
+              clientJwt: params?.clientJwt,
+            }
           );
           // 终止进程
           pythonProcess.kill();
@@ -468,7 +473,13 @@ export class ScriptExecutorService {
       await this.logService.addLog(
         taskId,
         LOG_STAGE.completed,
-        `[${moment().format('YYYY-MM-DD HH:mm:ss')}] [错误] ${error.message}`
+        `[${moment().format('YYYY-MM-DD HH:mm:ss')}] [错误] ${error.message}`,
+        true,
+        {
+          clientId: params?.clientId,
+          fileDataId: params?.projectId,
+          clientJwt: params?.clientJwt,
+        }
       );
       this.logger.error(`执行脚本时出错: ${error.message}`);
 

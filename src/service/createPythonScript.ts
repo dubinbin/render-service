@@ -57,7 +57,8 @@ export class GeneratePythonScriptService {
       // 执行脚本
       const result = await this.scriptExecutor.executeScript(
         taskId,
-        scriptPath
+        scriptPath,
+        params
       );
 
       return {
