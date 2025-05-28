@@ -296,7 +296,7 @@ except Exception as e:
 # 如果是主进程，则启动子进程渲染其他相机
 if not is_subprocess and len(camera_info) > 1:
     # 限制最大并行数
-    max_parallel = 4  # 可以根据机器配置调整
+    max_parallel = 8  # 可以根据机器配置调整
     
     print(f"\n主相机渲染完成，开始渲染其他 {len(camera_info)-1} 个相机")
     processes = []

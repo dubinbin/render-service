@@ -37,7 +37,7 @@ export default {
   },
   // 任务调度器配置
   task: {
-    maxConcurrentTasks: 1,
+    maxConcurrentTasks: 4,
     taskTimeout: 30 * 60 * 1000,
     taskTypes: {
       // 渲染任务配置
