@@ -19,6 +19,9 @@ export class ClientCallbackService {
     // 给前端一个回调
     const { clientId, clientJwt, fileDataId } = callbackParams;
     const uploadResult = await this.fileService.uploadFile(taskId);
+    this.logger.info(
+      `回调前端参数: ${taskId} -- ${clientId} -- ${clientJwt} -- ${fileDataId} -- ${uploadResult.url}`
+    );
     try {
       const res = await fetch(
         `${CALLBACK_CLIENT_URL}/api/renderPicSuccessFul`,
@@ -37,9 +40,15 @@ export class ClientCallbackService {
           },
         }
       );
-      this.logger.info(
-        `回调前端成功: ${res.status} -- ${taskId} -- ${clientId} -- ${clientJwt} -- ${fileDataId} -- ${uploadResult.url}`
-      );
+      if (res.status === 200) {
+        this.logger.info(
+          `回调前端成功: ${res.status} -- ${taskId} -- ${clientId} -- ${clientJwt} -- ${fileDataId} -- ${uploadResult.url}`
+        );
+      } else {
+        this.logger.error(
+          `回调前端失败: ${res.status} -- ${taskId} -- ${clientId} -- ${clientJwt} -- ${fileDataId} -- ${uploadResult.url}`
+        );
+      }
     } catch (error) {
       this.logger.error(`回调前端失败: ${error.message}`);
       this.logService.addLog(
