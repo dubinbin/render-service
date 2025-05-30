@@ -1,65 +1,17 @@
 import bpy # type: ignore
 import os
 import math
-import subprocess
 from mathutils import Vector # type: ignore
 import sys
 import requests
-# 用于判断是否是子进程的参数识别
-is_subprocess = False
-camera_index = 0
-
-
-# 用于向后端报告错误的函数
-def report_error(error_message):
-    try:
-        print(f"ERROR: {error_message}")  # 标准输出中打印错误
-        sys.stderr.write(f"ERROR: {error_message}\n")  # 向标准错误输出错误
-        
-        # 同时发送HTTP请求报告错误
-        response = requests.post(
-            f"http://localhost:7001/api/logs/error-callback",
-            json={
-                "taskId": taskId,
-                "error": error_message,
-                "callbackParams": {
-                    "clientId": clientId,
-                    "clientJwt": clientJwt,
-                    "fileDataId": fileDataId
-                }
-            },
-            timeout=10
-        )
-        print(f"错误报告状态: {response.status_code}")
-    except Exception as e:
-        print(f"报告错误时发生异常: {str(e)}")
-    
-    # 使用非零退出码退出程序
-    sys.exit(1)
-
-
-# 假设通过--camera_index参数传递相机索引
-if '--camera_index' in sys.argv:
-    idx = sys.argv.index('--camera_index')
-    if idx + 1 < len(sys.argv):
-        camera_index = int(sys.argv[idx + 1])
-        is_subprocess = True
-
-print(f"相机索引: {camera_index}")
-print(f"是否是子进程: {is_subprocess}")
 
 # 获取渲染文件路径参数
 taskId = "${taskId}"
 outputDir = "${outputDir}"
 blend_file_path = "${blendFilePath}"
-blenderRunPath = "${blenderRunPath}"
 clientId = "${clientId}"
 clientJwt = "${clientJwt}"
 fileDataId = "${fileDataId}"
-
-# 如果是子进程，则修改任务ID，避免文件名冲突
-if is_subprocess:
-    taskId = f"{taskId}_cam{camera_index}"
 
 # 其他渲染参数
 try:
@@ -78,12 +30,12 @@ resolution_map = {
 # --- 1. 加载blend文件 ---
 if not os.path.exists(blend_file_path):
     error_msg = f"Blend文件未找到: {blend_file_path}"
-    report_error(error_msg)  # 使用新函数报告错误
+    print(error_msg)  # 使用新函数报告错误
 
 try:
     bpy.ops.wm.open_mainfile(filepath=blend_file_path)
 except Exception as e:
-    report_error(f"加载Blend文件失败: {str(e)}")
+    print(f"加载Blend文件失败: {str(e)}")
 
 # 获取所有相机信息
 all_cameras = [obj for obj in bpy.data.objects if obj.type == 'CAMERA']
@@ -173,29 +125,19 @@ else:
     print("没有需要替换的项目，跳过替换步骤")
 
 # 选择和设置相机
-if is_subprocess:
-    # 子进程：使用指定索引的相机
-    if camera_index < len(camera_info):
-        selected_camera = camera_info[camera_index]
-        print(f"使用索引为 {camera_index} 的相机: {selected_camera['name']}")
-        camera_object = bpy.data.objects[selected_camera['name']]
-    else:
-        raise ValueError(f"相机索引 {camera_index} 超出范围，最大索引为 {len(camera_info)-1}")
+if len(camera_info) > 0:
+    selected_camera = camera_info[0]
+    print(f"使用第一个相机: {selected_camera['name']}")
+    camera_object = bpy.data.objects[selected_camera['name']]
 else:
-    # 主进程：使用第一个相机
-    if len(camera_info) > 0:
-        selected_camera = camera_info[camera_index]
-        print(f"主进程使用第一个相机: {selected_camera['name']}")
-        camera_object = bpy.data.objects[selected_camera['name']]
-    else:
-        # 如果没有相机，创建一个新相机
-        print("场景中没有相机，创建默认相机")
-        new_camera = bpy.data.cameras.new(name='DefaultCamera')
-        camera_object = bpy.data.objects.new('DefaultCamera', new_camera)
-        bpy.context.scene.collection.objects.link(camera_object)
-        camera_object.location = (0, 0, 0)
-        camera_object.rotation_euler = (0, 0, 0)
-        camera_object.data.lens = 50
+    # 如果没有相机，创建一个新相机
+    print("场景中没有相机，创建默认相机")
+    new_camera = bpy.data.cameras.new(name='DefaultCamera')
+    camera_object = bpy.data.objects.new('DefaultCamera', new_camera)
+    bpy.context.scene.collection.objects.link(camera_object)
+    camera_object.location = (0, 0, 0)
+    camera_object.rotation_euler = (0, 0, 0)
+    camera_object.data.lens = 50
 
 # 确保相机是活动的并设置为场景相机
 bpy.context.view_layer.objects.active = camera_object
@@ -293,37 +235,54 @@ except requests.exceptions.RequestException as e:
 except Exception as e:
     print(f"发送通知时发生未知错误: {str(e)}")
 
-# 如果是主进程，则启动子进程渲染其他相机
-if not is_subprocess and len(camera_info) > 1:
-    # 限制最大并行数
-    max_parallel = 3  # 可以根据机器配置调整
+# 渲染所有相机
+print(f"\n开始渲染所有相机，共 {len(camera_info)} 个")
+for i, camera_data in enumerate(camera_info):
+    # 更新任务ID
+    current_task_id = f"{taskId}_cam{i}" if i > 0 else taskId
     
-    print(f"\n主相机渲染完成，开始渲染其他 {len(camera_info)-1} 个相机")
-    processes = []
+    # 选择当前相机
+    print(f"使用索引为 {i} 的相机: {camera_data['name']}")
+    camera_object = bpy.data.objects[camera_data['name']]
     
-    # 启动子进程渲染剩余相机
-    for i in range(1, len(camera_info)):
-        cmd = [
-            blenderRunPath,   # 使用传入的blender执行路径
-            "-b", blend_file_path,
-            "--python", __file__,  # 当前脚本
-            "--",  # 分隔符，后面的参数会传递给Python脚本
-            "--camera_index", str(i)
-        ]
+    # 设置当前相机为活动相机
+    bpy.context.view_layer.objects.active = camera_object
+    bpy.context.scene.camera = camera_object
+    
+    # 更新输出文件路径
+    output_file = os.path.join(output_dir, f"{current_task_id}.jpg")
+    bpy.context.scene.render.filepath = output_file
+    
+    # 执行渲染
+    print(f"开始渲染相机 {i}: {camera_data['name']}")
+    bpy.ops.render.render(write_still=True)
+    print(f"渲染完成，图像已保存到: {output_file}")
+    
+    # 发送回调通知
+    try:
+        print(f"正在发送渲染完成通知，任务ID: {current_task_id}")
+        response = requests.post(
+            f"http://localhost:7001/api/render/client-callback",
+            json={
+                "taskId": current_task_id,
+                "callbackParams": {
+                    "clientId": clientId,
+                    "clientJwt": clientJwt,
+                    "fileDataId": fileDataId
+                }
+            },
+            timeout=10
+        )
         
-        print(f"启动子进程渲染相机 {i}: {camera_info[i]['name']}")
-        print(f"执行命令: {' '.join(cmd)}")
-        p = subprocess.Popen(cmd)
-        processes.append(p)
-        
-        # 控制并行度
-        if len(processes) >= max_parallel:
-            print(f"达到最大并行数 {max_parallel}，等待一个进程完成...")
-            processes[0].wait()  # 等待第一个完成
-            processes.pop(0)
-    
-    # 等待所有子进程完成
-    for p in processes:
-        p.wait()
-    
-    print(f"所有 {len(camera_info)} 个相机渲染完成！")
+        if response.status_code == 200:
+            print(f"通知发送成功: {response.status_code}")
+        else:
+            print(f"通知发送失败: HTTP状态码 {response.status_code}")
+            print(f"响应内容: {response.text}")
+            
+    except requests.exceptions.RequestException as e:
+        print(f"通知发送异常: {str(e)}")
+    except Exception as e:
+        print(f"发送通知时发生未知错误: {str(e)}")
+
+print(f"所有 {len(camera_info)} 个相机渲染完成！")
