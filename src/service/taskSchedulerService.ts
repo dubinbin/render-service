@@ -259,6 +259,45 @@ export class TaskSchedulerService {
   }
 
   /**
+   * 终止正在运行的任务
+   */
+  async terminateTask(taskId: string): Promise<boolean> {
+    const taskKey = `${this.TASK_INFO_PREFIX}${taskId}`;
+    const taskJson = await this.redisService.get(taskKey);
+
+    if (!taskJson) {
+      return false;
+    }
+
+    const task: TaskMessage = JSON.parse(taskJson);
+
+    // 只能终止正在处理中的任务
+    if (task.status !== TaskStatus.PROCESSING) {
+      this.logger.warn(`无法终止任务[${taskId}]，当前状态: ${task.status}`);
+      return false;
+    }
+
+    // 更新任务状态为失败
+    await this.updateTaskStatus(taskId, TaskStatus.FAILED, {
+      error: '任务已被终止',
+    });
+
+    // 从处理中集合移除
+    await this.redisService.srem(this.TASK_PROCESSING_KEY, taskId);
+
+    // 更新当前运行任务数
+    this.currentRunningTasks = Math.max(0, this.currentRunningTasks - 1);
+
+    // 通过RabbitMQ发送终止通知
+    await this.rabbitmqService.sendMessage(this.RABBITMQ_QUEUE, {
+      taskId: task.id,
+      action: 'terminate',
+    });
+
+    return true;
+  }
+
+  /**
    * 从队列中获取下一个任务并处理
    */
   private async processNextTasks(): Promise<void> {

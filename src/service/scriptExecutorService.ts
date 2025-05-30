@@ -50,6 +50,8 @@ export class ScriptExecutorService {
     taskTypes: Record<string, any>;
   };
 
+  private pythonProcesses: Map<string, any> = new Map();
+
   /**
    * 执行Python脚本
    * @param taskId 任务ID
@@ -133,6 +135,10 @@ export class ScriptExecutorService {
           '--python',
           scriptPath,
         ]);
+
+        // 存储进程引用
+        this.pythonProcesses.set(taskId, pythonProcess);
+
         let lastProgress = 0;
         let totalOutput = '';
         let errorOutput = '';
@@ -240,6 +246,9 @@ export class ScriptExecutorService {
 
         // 处理脚本执行完成
         pythonProcess.on('close', async code => {
+          // 移除进程引用
+          this.pythonProcesses.delete(taskId);
+
           const executionTime = Date.now() - startTime;
           this.writeLog(
             logStream,
@@ -674,5 +683,25 @@ export class ScriptExecutorService {
    */
   private writeLog(logStream: fs.WriteStream, message: string): void {
     logStream.write(`${message}\n`);
+  }
+
+  /**
+   * 终止任务执行
+   */
+  async terminateTask(taskId: string): Promise<boolean> {
+    const process = this.pythonProcesses.get(taskId);
+    if (!process) {
+      return false;
+    }
+
+    try {
+      // 终止进程
+      process.kill();
+      this.pythonProcesses.delete(taskId);
+      return true;
+    } catch (error) {
+      this.logger.error(`终止任务[${taskId}]失败: ${error.message}`);
+      return false;
+    }
   }
 }

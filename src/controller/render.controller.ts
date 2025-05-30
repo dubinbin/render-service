@@ -255,4 +255,38 @@ export class RenderController {
       };
     }
   }
+
+  /**
+   * 终止渲染任务
+   */
+  @Post('/terminate')
+  async terminateRenderTask(@Param('taskId') taskId: string) {
+    try {
+      // 先尝试终止任务进程
+      const processTerminated = await this.scriptExecutor.terminateTask(taskId);
+
+      // 然后更新任务状态
+      const statusUpdated = await this.taskScheduler.terminateTask(taskId);
+
+      if (!statusUpdated) {
+        return {
+          success: false,
+          error: '任务终止失败，任务可能不存在或已经完成',
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          message: '任务已终止',
+          processTerminated,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message || '任务终止失败',
+      };
+    }
+  }
 }
