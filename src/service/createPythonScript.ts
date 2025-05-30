@@ -91,8 +91,8 @@ export class GeneratePythonScriptService {
       const replacementItemsArr =
         materialList?.map(material => {
           return {
-            target: `${this.modelConfig.modelDir}/${material.originalMaterialName}`,
-            fbx: `${this.modelConfig.modelDir}/${material.newMaterialName}`,
+            target: material.originalMaterialName,
+            fbx: `${this.modelConfig.modelDir}/${material.newMaterialName}.fbx`,
             collection_name: `${material.newMaterialName}`,
           };
         }) || [];
