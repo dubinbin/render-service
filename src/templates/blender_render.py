@@ -180,7 +180,8 @@ cycles.tile_size = 256  # 增加tile size以提高GPU利用率
 
 # 启用GPU优化
 cycles.use_denoising = True
-cycles.denoiser = 'OPTIX'  # 使用OptiX降噪器
+cycles.denoiser = 'OPENIMAGEDENOISE'  # 使用 OpenImageDenoise，这是一个更通用的降噪器
+cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'  # 设置降噪器使用的通道
 
 # 2. 光线弹射设置
 cycles.max_bounces = 4       # 总弹射次数
