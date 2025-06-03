@@ -176,7 +176,7 @@ for device in cycles_prefs.devices:
 cycles.device = 'GPU'
 print(f"当前渲染设备: {cycles.device}")
 
-# 其他渲染设置
+# 设置GPU特定的渲染参数
 cycles.samples = 64
 cycles.use_adaptive_sampling = True
 cycles.adaptive_threshold = 0.01
@@ -184,6 +184,26 @@ cycles.adaptive_min_samples = 64
 cycles.tile_size = 256  # 增加tile size以提高GPU利用率
 
 # 启用GPU优化
+cycles.use_denoising = True
+cycles.denoiser = 'OPENIMAGEDENOISE'
+cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'
+
+# 设置GPU特定的光线弹射参数
+cycles.max_bounces = 4
+cycles.diffuse_bounces = 2
+cycles.glossy_bounces = 2
+cycles.transmission_bounces = 4
+cycles.volume_bounces = 0
+cycles.transparent_max_bounces = 4
+
+# 设置GPU特定的内存限制
+cycles.use_auto_tile = True
+cycles.tile_size = 256
+
+# 设置GPU特定的线程数
+cycles.threads = 0  # 自动设置线程数
+
+# 其他渲染设置
 cycles.use_denoising = True
 cycles.denoiser = 'OPENIMAGEDENOISE'  # 使用 OpenImageDenoise，这是一个更通用的降噪器
 cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'  # 设置降噪器使用的通道

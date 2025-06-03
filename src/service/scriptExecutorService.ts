@@ -130,12 +130,20 @@ export class ScriptExecutorService {
 
       return new Promise((resolve, reject) => {
         // 执行Python脚本
-        const pythonProcess = spawn(process.env.BLENDER_PATH || 'blender', [
-          '--background',
-          '--python-use-system-env',
-          '--python',
-          scriptPath,
-        ]);
+        const pythonProcess = spawn(
+          process.env.BLENDER_PATH || 'blender',
+          ['--background', '--python', scriptPath],
+          {
+            env: {
+              ...process.env,
+              CUDA_VISIBLE_DEVICES: '0',
+              CYCLES_DEVICE: 'CUDA',
+              CYCLES_CUDA_USE_OPTIX: '0',
+              BLENDER_USER_SCRIPTS: process.env.BLENDER_USER_SCRIPTS || '',
+              BLENDER_SYSTEM_SCRIPTS: process.env.BLENDER_SYSTEM_SCRIPTS || '',
+            },
+          }
+        );
 
         // 存储进程引用
         this.pythonProcesses.set(taskId, pythonProcess);
