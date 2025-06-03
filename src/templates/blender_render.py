@@ -177,7 +177,7 @@ cycles.device = 'GPU'
 print(f"当前渲染设备: {cycles.device}")
 
 # 设置GPU特定的渲染参数
-cycles.samples = 1080
+cycles.samples = 512
 cycles.use_adaptive_sampling = True
 cycles.adaptive_threshold = 0.01
 cycles.adaptive_min_samples = 64
