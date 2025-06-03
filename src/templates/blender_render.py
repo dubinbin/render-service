@@ -5,6 +5,11 @@ from mathutils import Vector # type: ignore
 import sys
 import requests
 
+# 设置GPU环境变量
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CYCLES_DEVICE'] = 'CUDA'
+os.environ['CYCLES_CUDA_USE_OPTIX'] = '0'
+
 # 获取渲染文件路径参数
 taskId = "${taskId}"
 outputDir = "${outputDir}"
