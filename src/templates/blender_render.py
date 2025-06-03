@@ -149,8 +149,8 @@ bpy.context.scene.render.engine = 'CYCLES'
 scene = bpy.context.scene
 cycles = scene.cycles
 
-# 检测并设置GPU
-print("\n检测GPU设备...")
+# 强制启用GPU渲染
+print("\n强制启用GPU渲染...")
 preferences = bpy.context.preferences
 cycles_prefs = preferences.addons['cycles'].preferences
 
@@ -167,7 +167,7 @@ for device in cycles_prefs.devices:
         device.use = True
         print(f"启用GPU设备: {device.name}")
 
-# 设置GPU渲染
+# 强制设置GPU渲染
 cycles.device = 'GPU'
 print(f"当前渲染设备: {cycles.device}")
 

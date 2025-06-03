@@ -132,6 +132,7 @@ export class ScriptExecutorService {
         // 执行Python脚本
         const pythonProcess = spawn(process.env.BLENDER_PATH || 'blender', [
           '--background',
+          '--enable-gpu',
           '--python',
           scriptPath,
         ]);
