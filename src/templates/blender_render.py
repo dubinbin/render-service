@@ -203,38 +203,6 @@ scene.view_settings.look = 'None'
 scene.view_settings.exposure = 0
 scene.view_settings.gamma = 1.0
 
-# 执行渲染并保存图像
-bpy.ops.render.render(write_still=True)
-print(f"渲染完成，图像已保存到: {output_file}")
-
-# 发送回调通知
-try:
-    print(f"正在发送渲染完成通知，任务ID: {taskId}")
-    response = requests.post(
-        f"http://localhost:7001/api/render/client-callback",
-        json={
-            "taskId": taskId,
-            "callbackParams": {
-                "clientId": clientId,
-                "clientJwt": clientJwt,
-                "fileDataId": fileDataId
-            }
-        },
-        timeout=10  # 设置10秒超时，避免长时间阻塞
-    )
-    
-    if response.status_code == 200:
-        print(f"通知发送成功: {response.status_code}")
-    else:
-        print(f"通知发送失败: HTTP状态码 {response.status_code}")
-        print(f"响应内容: {response.text}")
-        
-except requests.exceptions.RequestException as e:
-    print(f"通知发送异常: {str(e)}")
-    # 继续执行，不让网络问题影响渲染流程
-except Exception as e:
-    print(f"发送通知时发生未知错误: {str(e)}")
-
 # 渲染所有相机
 print(f"\n开始渲染所有相机，共 {len(camera_info)} 个")
 for i, camera_data in enumerate(camera_info):
