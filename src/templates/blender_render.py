@@ -203,11 +203,6 @@ cycles.tile_size = 512  # 增加tile size以提高GPU利用率
 # 设置GPU特定的线程数
 cycles.threads = 0  # 自动设置线程数
 
-# 其他优化设置
-cycles.use_fast_gi = True  # 启用快速全局光照
-cycles.use_light_tree = True  # 启用灯光树优化
-cycles.use_auto_tile = True  # 启用自动分块
-cycles.tile_size = 512  # 设置较大的分块大小
 
 # 设置GPU特定的内存限制
 cycles.use_auto_tile = True
