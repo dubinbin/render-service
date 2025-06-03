@@ -149,16 +149,36 @@ bpy.context.scene.render.engine = 'CYCLES'
 scene = bpy.context.scene
 cycles = scene.cycles
 
+# 检测并设置GPU
+print("\n检测GPU设备...")
+preferences = bpy.context.preferences
+cycles_prefs = preferences.addons['cycles'].preferences
+cycles_prefs.compute_device_type = 'CUDA'  # 对于NVIDIA显卡使用CUDA，AMD显卡使用'OPTIX'
+
+# 获取可用的计算设备
+available_devices = cycles_prefs.get_devices()
+print(f"可用的计算设备: {available_devices}")
+
+# 启用所有可用的GPU设备
+for device in cycles_prefs.devices:
+    if device.type == 'CUDA':  # 对于NVIDIA显卡
+        device.use = True
+        print(f"启用GPU设备: {device.name}")
+
+# 设置GPU渲染
 cycles.device = 'GPU'
+print(f"当前渲染设备: {cycles.device}")
+
+# 其他渲染设置
 cycles.samples = 64
 cycles.use_adaptive_sampling = True
 cycles.adaptive_threshold = 0.01
 cycles.adaptive_min_samples = 64
-cycles.tile_size = 64
+cycles.tile_size = 256  # 增加tile size以提高GPU利用率
 
+# 启用GPU优化
 cycles.use_denoising = True
-# cycles.denoiser = 'OPENIMAGEDENOISE'
-# cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'
+cycles.denoiser = 'OPTIX'  # 使用OptiX降噪器（仅适用于NVIDIA显卡）
 
 # 2. 光线弹射设置
 cycles.max_bounces = 4       # 总弹射次数
