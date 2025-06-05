@@ -8,7 +8,7 @@ export const ONE_DAY_LEN = 24 * 60 * 60 * 1000;
 
 export const CALLBACK_CLIENT_URL = 'https://layra.hkcrc.services';
 
-export const FILE_DATA_PATH = 'http://192.168.10.150:5000';
+export const FILE_DATA_PATH = 'http://localhost:5001';
 
 export enum TASK_STATUS_FROM_MQTT {
   'finished' = 'finished',

@@ -6,35 +6,34 @@ services:
     image: redis:alpine
     container_name: redis
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
     restart: unless-stopped
     environment:
-      - REDIS_PASSWORD=6653145  # 可选：设置Redis密码
+      - REDIS_PASSWORD=6653145 # 可选：设置Redis密码
 
   # MySQL 服务（端口 3306）
   mysql:
     image: mysql:8.0.37
     container_name: mysql
     ports:
-      - "3306:3306"
+      - '3306:3306'
     volumes:
       - mysql_data:/var/lib/mysql
       - mysql_config:/etc/mysql/conf.d
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: 6653145  # <-- 移除 '-'，改为 key: value
-      MYSQL_ROOT_HOST: '%'          # <-- 移除 '-'，改为 key: value
-
+      MYSQL_ROOT_PASSWORD: 6653145 # <-- 移除 '-'，改为 key: value
+      MYSQL_ROOT_HOST: '%' # <-- 移除 '-'，改为 key: value
 
   # RabbitMQ 服务（AMQP 5672，管理界面 15672）
   rabbitmq:
     image: bitnami/rabbitmq:latest
     container_name: rabbitmq
     ports:
-      - "5672:5672"    # AMQP 协议端口
-      - "15672:15672"  # 管理界面端口
+      - '5672:5672' # AMQP 协议端口
+      - '15672:15672' # 管理界面端口
     volumes:
       - rabbitmq_data:/bitnami/rabbitmq
     restart: unless-stopped
@@ -43,6 +42,34 @@ services:
       - RABBITMQ_PASSWORD=6653145
       - RABBITMQ_LOOPBACK_USERS=false
       - RABBITMQ_MANAGEMENT_ALLOW_WEB_ACCESS=true
+
+  # Dufs 文件服务器（端口 5001）
+  dufs:
+    image: sigoden/dufs:latest
+    container_name: dufs
+    ports:
+      - '5001:5000' # 修改外部端口为 5001，避免端口冲突
+    volumes:
+      # - /Users/ryderdu/Desktop/test_render_static/static-resource:/data # 将本地 files 目录映射到容器的 /data 目录
+      - /home/ubun/Desktop/test_render_static/uploadstatic:/data
+    restart: unless-stopped
+    working_dir: /data
+    command: >
+      --bind 0.0.0.0
+      --port 5000
+      --enable-cors
+      --allow-all
+      --allow-upload
+      --allow-delete
+      --allow-search
+      --allow-archive
+    environment:
+      - DUFS_ENABLE_CORS=true
+      - DUFS_ALLOW_ALL=true
+      - DUFS_ALLOW_UPLOAD=true
+      - DUFS_ALLOW_DELETE=true
+      - DUFS_ALLOW_SEARCH=true
+      - DUFS_ALLOW_ARCHIVE=true
 
 # 定义持久化存储卷
 volumes:
