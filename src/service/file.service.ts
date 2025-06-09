@@ -1,7 +1,7 @@
 import { Provide, Inject, ILogger, Config } from '@midwayjs/core';
 import path = require('path');
 import fs = require('fs');
-import { FILE_DATA_PATH } from '@/constant';
+import { CALLBACK_CLIENT_URL, FILE_DATA_PATH } from '@/constant';
 
 @Provide()
 export class FileService {
@@ -51,14 +51,14 @@ export class FileService {
         JSON.stringify({
           success: response.ok,
           message: `Upload completed with status ${response.status}`,
-          url: `${FILE_DATA_PATH}/render_output/${taskId}.jpg`,
+          url: `${CALLBACK_CLIENT_URL}/render_output/${taskId}.jpg`,
         })
       );
 
       return {
         success: response.ok,
         message: `Upload completed with status ${response.status}`,
-        url: `${FILE_DATA_PATH}/render_output/${taskId}.jpg`,
+        url: `${CALLBACK_CLIENT_URL}/render_output/${taskId}.jpg`,
       };
     } catch (error: any) {
       this.logger.error(`Failed to upload file for task ${taskId}:`, {
