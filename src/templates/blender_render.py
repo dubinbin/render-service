@@ -177,36 +177,15 @@ cycles.device = 'GPU'
 print(f"当前渲染设备: {cycles.device}")
 
 # 设置GPU特定的渲染参数
-cycles.samples = 256  # 降低采样数，在保持质量的同时提高速度
+cycles.samples = 128  # 降低采样数，在保持质量的同时提高速度
 cycles.use_adaptive_sampling = True
-cycles.adaptive_threshold = 0.02  # 提高阈值，减少采样
+cycles.adaptive_threshold = 0.1  # 提高阈值，减少采样
 cycles.adaptive_min_samples = 32  # 降低最小采样数
-cycles.tile_size = 512  # 增加tile size以提高GPU利用率
-
-# 启用GPU优化
-cycles.use_denoising = True
-cycles.denoiser = 'OPENIMAGEDENOISE'
-cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'
-
-# 设置GPU特定的光线弹射参数
-cycles.max_bounces = 3       # 减少总弹射次数
-cycles.diffuse_bounces = 2   # 保持漫反射弹射
-cycles.glossy_bounces = 2    # 保持光泽弹射
-cycles.transmission_bounces = 3  # 减少透射弹射
-cycles.volume_bounces = 0    # 保持体积弹射为0
-cycles.transparent_max_bounces = 3  # 减少透明弹射
 
 # 设置GPU特定的内存限制
 cycles.use_auto_tile = True
 cycles.tile_size = 512  # 增加tile size以提高GPU利用率
 
-# 设置GPU特定的线程数
-cycles.threads = 0  # 自动设置线程数
-
-
-# 设置GPU特定的内存限制
-cycles.use_auto_tile = True
-cycles.tile_size = 512
 
 # 设置GPU特定的线程数
 cycles.threads = 0  # 自动设置线程数
@@ -216,13 +195,13 @@ cycles.use_denoising = True
 cycles.denoiser = 'OPENIMAGEDENOISE'  # 使用 OpenImageDenoise，这是一个更通用的降噪器
 cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'  # 设置降噪器使用的通道
 
-# 2. 光线弹射设置
-cycles.max_bounces = 4       # 总弹射次数
-cycles.diffuse_bounces = 2   # 漫反射弹射
-cycles.glossy_bounces = 2   # 光泽弹射
-cycles.transmission_bounces = 4  # 透射弹射
-cycles.volume_bounces = 0    # 体积弹射
-cycles.transparent_max_bounces = 4  # 透明弹射
+# # 2. 光线弹射设置
+# cycles.max_bounces = 4       # 总弹射次数
+# cycles.diffuse_bounces = 2   # 漫反射弹射
+# cycles.glossy_bounces = 2   # 光泽弹射
+# cycles.transmission_bounces = 4  # 透射弹射
+# cycles.volume_bounces = 0    # 体积弹射
+# cycles.transparent_max_bounces = 4  # 透明弹射
 
 # 3. 因果设置
 # cycles.caustics_reflective = True  # 反射因果
