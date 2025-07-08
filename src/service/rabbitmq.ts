@@ -51,7 +51,7 @@ export class RabbitMQService {
         try {
           await callback(message, this.channelWrapper as unknown as Channel);
           // 成功处理消息后确认
-          (this.channelWrapper as unknown as Channel).ack(message);
+          this.channelWrapper.ack(message);
         } catch (error) {
           console.error('Error processing message:', error);
           // 处理失败时拒绝消息并重新入队

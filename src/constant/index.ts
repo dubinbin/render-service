@@ -6,7 +6,7 @@ export const DAY_EXPIRE = 15;
 
 export const ONE_DAY_LEN = 24 * 60 * 60 * 1000;
 
-export const CALLBACK_CLIENT_URL = 'https://layra.hkcrc.services';
+export const CALLBACK_CLIENT_URL = 'https://layra.net';
 
 export const FILE_DATA_PATH = 'http://192.168.10.135:5001';
 
