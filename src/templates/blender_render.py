@@ -155,24 +155,31 @@ scene = bpy.context.scene
 cycles = scene.cycles
 
 # 强制启用GPU渲染
-print("\n强制启用GPU渲染...")
 preferences = bpy.context.preferences
 cycles_prefs = preferences.addons['cycles'].preferences
 
-# 设置计算设备类型为CUDA
-cycles_prefs.compute_device_type = 'CUDA'
+try:
+    # 尝试启用 OptiX
+    cycles_prefs.compute_device_type = 'OPTIX'
+    optix_found = False
+    for device in cycles_prefs.devices:
+        if device.type == 'OPTIX':
+            device.use = True
+            optix_found = True
+    
+    if not optix_found:
+        # OptiX 不可用，回退到 CUDA
+        cycles_prefs.compute_device_type = 'CUDA'
+        for device in cycles_prefs.devices:
+            if device.type == 'CUDA':
+                device.use = True
+except:
+    # 出错时回退到 CUDA
+    cycles_prefs.compute_device_type = 'CUDA'
+    for device in cycles_prefs.devices:
+        if device.type == 'CUDA':
+            device.use = True
 
-# 获取并打印可用的计算设备
-available_devices = cycles_prefs.get_devices()
-print(f"可用的计算设备: {available_devices}")
-
-# 启用所有可用的CUDA设备
-for device in cycles_prefs.devices:
-    if device.type == 'CUDA':
-        device.use = True
-        print(f"启用GPU设备: {device.name}")
-
-# 强制设置GPU渲染
 cycles.device = 'GPU'
 print(f"当前渲染设备: {cycles.device}")
 
@@ -192,7 +199,7 @@ cycles.threads = 0  # 自动设置线程数
 
 # 其他渲染设置
 cycles.use_denoising = True
-cycles.denoiser = 'OPENIMAGEDENOISE'  # 使用 OpenImageDenoise，这是一个更通用的降噪器
+cycles.denoiser = 'OPTIX'  # 使用 OpenImageDenoise，这是一个更通用的降噪器
 cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'  # 设置降噪器使用的通道
 
 # # 2. 光线弹射设置
