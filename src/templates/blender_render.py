@@ -227,9 +227,9 @@ print(f"当前渲染模式: {cycles.device}")
 print("="*60 + "\n")
 
 # 设置GPU特定的渲染参数
-cycles.samples = 64  # 降低采样数，在保持质量的同时提高速度
+cycles.samples = 128  # 降低采样数，在保持质量的同时提高速度
 cycles.use_adaptive_sampling = True
-cycles.adaptive_threshold = 0.2  # 提高阈值，减少采样
+cycles.adaptive_threshold = 0.1  # 提高阈值，减少采样
 cycles.adaptive_min_samples = 32  # 降低最小采样数
 
 # 设置GPU特定的内存限制
