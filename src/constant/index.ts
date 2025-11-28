@@ -7,9 +7,10 @@ export const DAY_EXPIRE = 15;
 export const ONE_DAY_LEN = 24 * 60 * 60 * 1000;
 
 export const CALLBACK_CLIENT_URL = 'https://layra.net';
-
-export const FILE_DATA_PATH = 'http://192.168.10.135:5001';
-
+export const TEST_CALLBACK_CLIENT_URL = 'https://test.layra.net';
+// export const FILE_DATA_PATH = 'http://192.168.10.135:5001';
+// export const FILE_DATA_PATH = 'http://192.168.10.144:5001';
+export const FILE_DATA_PATH = 'http://192.168.20.166:5001';
 export enum TASK_STATUS_FROM_MQTT {
   'finished' = 'finished',
   'accept' = 'accept',

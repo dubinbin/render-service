@@ -7,8 +7,12 @@ import requests
 
 # 设置GPU环境变量
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-os.environ['CYCLES_DEVICE'] = 'CUDA'
-os.environ['CYCLES_CUDA_USE_OPTIX'] = '0'
+os.environ['CYCLES_DEVICE'] = 'GPU'  # 改为GPU而不是CUDA
+# 启用 OptiX 以获得更快的降噪速度
+os.environ['CYCLES_CUDA_USE_OPTIX'] = '1'  # 启用OptiX
+# 强制禁用CPU降噪，避免自动回退
+os.environ['CYCLES_OPENIMAGEDENOISE_ROOT'] = ''  # 清空CPU降噪路径
+os.environ['CYCLES_DENOISING_TYPE'] = 'OPTIX'  # 强制指定降噪类型
 
 # 获取渲染文件路径参数
 taskId = "${taskId}"
@@ -27,9 +31,9 @@ quality = "${quality}"
 
 # 设置渲染分辨率
 resolution_map = {
-    '1k': (1440, 810),    # 720P
-    '2k': (1920, 1080),   # 2K
-    '4k': (2560, 1440)    # 4K
+    '1k': (1920, 1080),    # 720P
+    '2k': (2560, 1440),   # 2K
+    '4k': (3840, 2160)    # 4K
 }
 
 # --- 1. 加载blend文件 ---
@@ -154,46 +158,138 @@ bpy.context.scene.render.engine = 'CYCLES'
 scene = bpy.context.scene
 cycles = scene.cycles
 
-# 强制启用GPU渲染
-print("\n强制启用GPU渲染...")
+
+# 🔧 强制启用 OptiX GPU 降噪
+# 注意：第一次使用时会编译内核，需要 2-5 分钟
+print("\n强制配置 OptiX GPU 降噪...")
 preferences = bpy.context.preferences
 cycles_prefs = preferences.addons['cycles'].preferences
 
-# 设置计算设备类型为CUDA
-cycles_prefs.compute_device_type = 'CUDA'
+# 先刷新设备列表
+cycles_prefs.refresh_devices()
 
-# 获取并打印可用的计算设备
-available_devices = cycles_prefs.get_devices()
-print(f"可用的计算设备: {available_devices}")
-
-# 启用所有可用的CUDA设备
-for device in cycles_prefs.devices:
-    if device.type == 'CUDA':
-        device.use = True
-        print(f"启用GPU设备: {device.name}")
+try:
+    # 强制设置OptiX设备类型
+    cycles_prefs.compute_device_type = 'OPTIX'
+    
+    # 检查 OptiX 设备是否可用
+    optix_devices = [d for d in cycles_prefs.devices if d.type == 'OPTIX']
+    cuda_devices = [d for d in cycles_prefs.devices if d.type == 'CUDA']
+    
+    if optix_devices:
+        print(f"✓ 找到 {len(optix_devices)} 个 OptiX 设备")
+        # 启用所有 OptiX 设备
+        for device in optix_devices:
+            device.use = True
+            print(f"  ✓ 启用: {device.name}")
+        
+        # 同时启用CUDA设备作为计算设备，OptiX作为降噪设备
+        for device in cuda_devices:
+            device.use = True
+            print(f"  ✓ 启用计算设备: {device.name} (CUDA)")
+            
+        print("\n⚠️  重要提示：")
+        print("   第一次使用 OptiX 需要编译渲染内核")
+        print("   如果看到 'Loading render kernels' 消息，这是正常的")
+        print("   请耐心等待 2-5 分钟，编译完成后会自动继续")
+        print("   之后的渲染将直接使用缓存，无需再等待\n")
+        
+        # 强制设置GPU渲染和OptiX降噪
+        cycles.device = 'GPU'
+        
+    else:
+        print("⚠ OptiX 设备未找到，尝试混合配置")
+        # 使用CUDA计算 + 强制OptiX降噪
+        cycles_prefs.compute_device_type = 'CUDA'
+        cycles.device = 'GPU'
+        
+        for device in cuda_devices:
+            device.use = True
+            print(f"✓ 启用设备: {device.name} (CUDA)")
+            
+        print("  将尝试强制使用OptiX降噪器...")
+        
+except Exception as e:
+    print(f"⚠ 设备配置失败: {str(e)}")
+    print("使用基础CUDA配置")
+    cycles_prefs.compute_device_type = 'CUDA'
+    cycles.device = 'GPU'
+    
+    for device in cycles_prefs.devices:
+        if device.type == 'CUDA':
+            device.use = True
+            print(f"✓ 启用设备: {device.name} (CUDA)")
 
 # 强制设置GPU渲染
 cycles.device = 'GPU'
-print(f"当前渲染设备: {cycles.device}")
+print(f"\n当前渲染设备类型: {cycles_prefs.compute_device_type}")
+print(f"当前渲染模式: {cycles.device}")
+print("="*60 + "\n")
 
 # 设置GPU特定的渲染参数
-cycles.samples = 128  # 降低采样数，在保持质量的同时提高速度
+cycles.samples = 32  # 降低采样数，在保持质量的同时提高速度
 cycles.use_adaptive_sampling = True
-cycles.adaptive_threshold = 0.1  # 提高阈值，减少采样
-cycles.adaptive_min_samples = 32  # 降低最小采样数
+cycles.adaptive_threshold = 0.2  # 提高阈值，减少采样
+cycles.adaptive_min_samples = 16  # 降低最小采样数
 
 # 设置GPU特定的内存限制
 cycles.use_auto_tile = True
 cycles.tile_size = 512  # 增加tile size以提高GPU利用率
 
+USE_DENOISING = True  # 从命令行参数读取
+
 
 # 设置GPU特定的线程数
-cycles.threads = 0  # 自动设置线程数
+# cycles.threads = 0  # 自动设置线程数
 
 # 其他渲染设置
-cycles.use_denoising = True
-cycles.denoiser = 'OPENIMAGEDENOISE'  # 使用 OpenImageDenoise，这是一个更通用的降噪器
-cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'  # 设置降噪器使用的通道
+cycles.use_denoising = USE_DENOISING
+if USE_DENOISING:
+    # 🔧 强制使用 OptiX GPU 降噪，避免CPU降噪
+    print("\n配置降噪器...")
+    
+    # 检查是否有OptiX设备
+    optix_devices = [d for d in cycles_prefs.devices if d.type == 'OPTIX']
+    
+    try:
+        # 强制设置为OptiX降噪器
+        cycles.denoiser = 'OPTIX'
+        print("✓ 强制使用 OptiX GPU 降噪器")
+        print("  降噪速度: 3-5秒/张")
+        print("  第一次渲染时会看到 'Loading render kernels'")
+        print("  这是正常的，请等待 2-5 分钟完成编译")
+        
+        # 设置降噪输入通道
+        cycles.denoising_input_passes = 'RGB'
+        
+        # 验证配置
+        current_denoiser = cycles.denoiser
+        print(f"  当前降噪器设置: {current_denoiser}")
+        
+        if current_denoiser != 'OPTIX':
+            print("  ⚠ 警告: 降噪器未设置为OPTIX，可能仍会使用CPU")
+            # 再次尝试强制设置
+            cycles.denoiser = 'OPTIX'
+            print("  重新设置为OPTIX降噪器...")
+            
+    except Exception as e:
+        print(f"  ⚠ 设置OptiX降噪器失败: {e}")
+        # 如果OptiX失败，仍然尝试设置为OPTIX而不是回退到CPU降噪
+        try:
+            cycles.denoiser = 'OPTIX'
+            print("  ✓ 强制设置OptiX降噪器成功")
+        except:
+            cycles.denoiser = 'OPENIMAGEDENOISE'
+            print("  ⚠ 回退到 OpenImageDenoise（可能较慢）")
+            print("  降噪速度: 30-40秒/张")
+    
+    # 额外配置确保GPU降噪
+    cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'
+    print(f"  降噪输入通道: {cycles.denoising_input_passes}")
+    
+else:
+    print("✓ 降噪已禁用 - 快速预览模式")
+
 
 # # 2. 光线弹射设置
 # cycles.max_bounces = 4       # 总弹射次数

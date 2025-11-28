@@ -1,4 +1,4 @@
-import { CALLBACK_CLIENT_URL, LOG_STAGE } from '@/constant';
+import { CALLBACK_CLIENT_URL, LOG_STAGE, TEST_CALLBACK_CLIENT_URL } from '@/constant';
 import { CallbackParams } from '@/types';
 import { ILogger, Inject, Provide } from '@midwayjs/core';
 import { FileService } from './file.service';
@@ -23,8 +23,10 @@ export class ClientCallbackService {
       `回调前端参数: ${taskId} -- ${clientId} -- ${clientJwt} -- ${fileDataId} -- ${uploadResult.url}`
     );
     try {
+      console.log(clientId)
+      console.log(clientId.includes('test-') ? TEST_CALLBACK_CLIENT_URL : CALLBACK_CLIENT_URL)
       const res = await fetch(
-        `${CALLBACK_CLIENT_URL}/api/renderPicSuccessFul`,
+        `${clientId.includes('test-') ? TEST_CALLBACK_CLIENT_URL : CALLBACK_CLIENT_URL}/api/renderPicSuccessFul`,
         {
           method: 'POST',
           body: JSON.stringify({
