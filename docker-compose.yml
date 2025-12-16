@@ -29,7 +29,7 @@ services:
 
   # RabbitMQ 服务（AMQP 5672，管理界面 15672）
   rabbitmq:
-    image: bitnami/rabbitmq:latest
+    image: rabbitmq:3.12-management
     container_name: rabbitmq
     ports:
       - '5672:5672' # AMQP 协议端口
